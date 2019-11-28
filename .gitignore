@@ -1,0 +1,31 @@
+# General binaries and Build results
+*.dll
+*.exe
+*.pdb
+
+### JetBrains ###
+.idea/
+
+### Backup ###
+backup/
+
+### CSharp ###
+# User-specific files
+*.suo
+*.user
+*.vcxproj.filters
+*.userprefs
+*.DotSettings.user
+
+# Build results
+**/[Bb]in/
+**/[Oo]bj/
+
+# Visual Studio cache/options directory
+**/.vs/
+
+# NuGet Packages
+**/packages/*
+
+# Visual Studio Code
+**/.vscode/

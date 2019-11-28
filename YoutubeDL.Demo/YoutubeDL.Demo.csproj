@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <RootNamespace>YoutubeDL.Demo</RootNamespace>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <AssemblyName>YoutubeDL.Demo</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\YoutubeDL\YoutubeDL.csproj" />
+    <ProjectReference Include="..\YoutubeDL.Python\YoutubeDL.Python.csproj" />
+  </ItemGroup>
+
+</Project>
