@@ -1,3 +1,5 @@
+![YoutubeDL](https://i.imgur.com/Es1wqBe.png)
+
 This is a .NET version of the popular python program "youtube-dl".
 youtube-dl - download videos from youtube.com or other video platforms
 As of today, this is still experimental development version and not on par with the python version yet!
@@ -56,6 +58,8 @@ namespace Demo
     }
 }
 ```
+
+## FOLLOWING DOCS ARE COPIED FROM THE YOUTUBE-DL PYTHON VERSION AND MAY NOT BE ACCURATE
 
 
 - [INSTALLATION](#installation)
