@@ -59,6 +59,7 @@ namespace Demo
     }
 }
 ```
+![ExampleCommand](https://i.imgur.com/es0FvMj.png)
 
 ## FOLLOWING DOCS ARE COPIED FROM THE YOUTUBE-DL PYTHON VERSION AND MAY NOT BE ACCURATE
 
