@@ -301,10 +301,16 @@ namespace YoutubeDL
             if (type == null) return null;
             MethodInfo i = type.GetMethod("PythonExtractInfo", BindingFlags.Public | BindingFlags.Static);
             if (i == null) return null;
-            
-            return await ((Task<InfoDict>)i.Invoke(null, new object[] { this, url, download, ie_key, extra_info, process, force_generic_extractor })).ConfigureAwait(false);
-           
-            //return await PythonExtractInfo(url, download, ie_key, extra_info, process, force_generic_extractor).ConfigureAwait(false);
+
+            try
+            {
+                return await ((Task<InfoDict>)i.Invoke(null, new object[] { this, url, download, ie_key, extra_info, process, force_generic_extractor })).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+                // python is not installed
+                return null;
+            }
         }
 
         internal static void AddDefaultExtraInfo(InfoDict infoDict, IInfoExtractor ie, string url)

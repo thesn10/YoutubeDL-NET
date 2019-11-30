@@ -59,7 +59,16 @@ namespace YoutubeDL.Python
         {
             // EXPERIMENTAL CODE
             await CheckDownloadYTDLPython(ytdl);
-            var state = Py.GIL();
+            Py.GILState state;
+            try
+            {
+                state = Py.GIL();
+            } 
+            catch 
+            {
+                ytdl.LogError("Python is not installed!");
+                throw new InvalidOperationException("Python is not installed!");
+            }
 
             using PyScope PyScope = Py.CreateScope("extractorscope");
 
