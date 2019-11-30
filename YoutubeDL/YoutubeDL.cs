@@ -90,7 +90,7 @@ namespace YoutubeDL
             if (!Options.Quiet)
             {
 #if !DEBUG
-                if (type != LogType.Debug)
+                if (e.LogType != LogType.Debug)
                 {
 #endif
                 if (!Options.NoColor && Util.TryEnableANSIColor())
@@ -479,7 +479,7 @@ namespace YoutubeDL
                         // download
                         if (f is CompFormat cf)
                         {
-                            FFMpegMergerPP ff = new FFMpegMergerPP();
+                            FFMpegMergerPP ff = new FFMpegMergerPP(Options.StrictMerge);
                             if (!ff.Available)
                             {
                                 LogWarning("ffmpeg or avconf is not installed, skipping " + cf.Id);
@@ -534,6 +534,7 @@ namespace YoutubeDL
                                 }
                                 else if (Options.Fixup == FixupPolicy.DetectOrWarn)
                                 {
+                                    LogWarning("Stretched Aspect Ratio detected");
                                     FFMpegFixupAspectRatioPP pp = new FFMpegFixupAspectRatioPP();
                                     pp.OnLog += Log;
                                     pp.OnProgress += (sender, e) => ProgressBar(sender, e, vf.Id, "Fixing Aspect Ratio", ConsoleColor.Magenta);

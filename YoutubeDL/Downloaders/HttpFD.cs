@@ -64,6 +64,7 @@ namespace YoutubeDL.Downloaders
         public async Task SingleThreadedDownload(string url, string filename, Dictionary<string, string> headers = null, int? chunkSize = null)
         {
             startTime = DateTime.Now;
+            long current = 0;
 
             long chunksize;
             if (chunkSize.HasValue && chunkSize != default)
@@ -80,7 +81,7 @@ namespace YoutubeDL.Downloaders
                     foreach (var h in headers)
                         message.Headers.Add(h.Key, h.Value);
 
-                message.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(f.Length - 1, f.Length + chunksize - 1);
+                message.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(current, current + chunksize - 1);
 
                 var resp = await HttpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
 
@@ -114,6 +115,7 @@ namespace YoutubeDL.Downloaders
 
                 if (f.Length < total)
                 {
+                    current = f.Length - 1;
                     continue;
                 }
                 else break;
@@ -154,14 +156,14 @@ namespace YoutubeDL.Downloaders
             {
                 var current = (l * chunksize);
                 HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, url);
-                message.Version = HttpVersion.Version10;
+
                 message.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(current, current + chunksize - 1);
                 if (headers != null)
                     foreach (var h in headers)
                         imessage.Headers.Add(h.Key, h.Value);
 
                 return ContentToFileAsync(filename, message, (recievedx, sizex) => { recievedTotal += sizex;RaiseProgress(recievedTotal, total); });//.ContinueWith((u) => RaiseProgress(l * , loops)); //}).ContinueWith((u) => RaiseProgress(recievedTotal, total)); ;//RaiseProgress(recieved, total); });//.ContinueWith((u) => RaiseProgress(l * , loops));
-                }, MaxThreads);
+            }, MaxThreads);
         }
 
         protected void GetContentRange(HttpResponseMessage resp, out long from, out long to, out long total)

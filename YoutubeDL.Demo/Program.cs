@@ -26,10 +26,10 @@ namespace youtube_dl_net_demo
         public static async Task Test()
         {
             YouTubeDL ytdl = new YouTubeDL();
+            //ytdl.Options.Format = "bestaudio";
             //ytdl.Options.Verbose = true;
-            //ytdl.SetupLazyLoad();
             //InfoDict dict = ytdl.ExtractInfo("https://www.youtube.com/playlist?list=PL8SwD_foum9yWCuNn1IyqkZI7EMmnzxcr", download: false);
-            InfoDict dict = await ytdl.ExtractInfoAsync("https://www.youtube.com/watch?v=L6ZSUyI9tx4").ConfigureAwait(false);//"https://www.youtube.com/watch?v=u2id3z1vw8c")//"https://www.youtube.com/watch?v=OKnLb4j2o9s");//"https://www.youtube.com/watch?v=g5AsOiLaS4w");
+            InfoDict dict = await ytdl.ExtractInfoAsync("https://www.youtube.com/watch?v=X1jMMFOqxEw");
 
             if (dict is Video video)
             {
@@ -40,7 +40,7 @@ namespace youtube_dl_net_demo
                 Console.WriteLine("YoutubeDL for .NET Extracted Playlist " + playlist.Id + ": " + playlist.Title);
             }
 
-            //InfoDict dict2 = ytdl.ExtractInfo("https://www.youtube.com/watch?v=g5AsOiLaS4w", process: false);
+            //InfoDict dict2 = ytdl.ExtractInfo("https://www.youtube.com/watch?v=X1jMMFOqxEw");
         }
     }
 }

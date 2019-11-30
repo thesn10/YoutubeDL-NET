@@ -22,14 +22,14 @@ namespace YoutubeDL.Postprocessors
     {
         #region Logging
         public event LogEventHandler OnLog;
-        protected void LogDebug(string message, string sender = null, bool writeline = true, string colormessage = null)
-            => Log(message, LogType.Debug, sender, writeline, colormessage);
-        protected void LogInfo(string message, string sender = null, bool writeline = true, string colormessage = null)
-            => Log(message, LogType.Info, sender, writeline, colormessage);
-        protected void LogWarning(string message, string sender = null, bool writeline = true, string colormessage = null)
-            => Log(message, LogType.Warning, sender, writeline, colormessage);
-        protected void LogError(string message, string sender = null, bool writeline = true, string colormessage = null)
-            => Log(message, LogType.Error, sender, writeline, colormessage);
+        protected void LogDebug(string message, bool writeline = true, string colormessage = null)
+            => Log(message, LogType.Debug, this.GetType().Name, writeline, colormessage);
+        protected void LogInfo(string message, bool writeline = true, string colormessage = null)
+            => Log(message, LogType.Info, this.GetType().Name, writeline, colormessage);
+        protected void LogWarning(string message, bool writeline = true, string colormessage = null)
+            => Log(message, LogType.Warning, this.GetType().Name, writeline, colormessage);
+        protected void LogError(string message, bool writeline = true, string colormessage = null)
+            => Log(message, LogType.Error, this.GetType().Name, writeline, colormessage);
 
         protected void Log(string message, LogType type, string sender = null, bool writeline = true, string colormessage = null, bool ytdlpy = false)
         {

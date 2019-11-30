@@ -55,6 +55,7 @@
     <Folder Include="Properties\" />
   </ItemGroup>
 
+  <!--
   <ItemGroup>
     <ProjectReference Include="..\YoutubeDL.MSBuild\YoutubeDL.MSBuild.csproj" />
   </ItemGroup>
@@ -64,7 +65,6 @@
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 
-  <!--
   <Target Name="BeforeBuild">
     <DescriptionTask>
     </DescriptionTask>

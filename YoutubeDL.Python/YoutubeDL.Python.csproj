@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\youtube-dl-net\YoutubeDL.csproj" />
+    <ProjectReference Include="..\YoutubeDL\YoutubeDL.csproj" />
   </ItemGroup>
 
   <ItemGroup>

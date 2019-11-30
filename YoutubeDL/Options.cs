@@ -575,6 +575,8 @@ namespace YoutubeDL
         /// Faster loading of python extractors (experimental)
         /// </summary>
         public bool LazyLoad { get; set; } = true;
+
+        public bool StrictMerge { get; set; } = false;
         #endregion
 
 

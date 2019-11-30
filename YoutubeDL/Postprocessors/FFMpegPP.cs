@@ -227,14 +227,35 @@ namespace YoutubeDL.Postprocessors
 
     public class FFMpegMergerPP : FFMpegPP, IPostProcessor<CompFormat>
     {
+        public bool StrictMerge { get; set; }
+        public FFMpegMergerPP(bool strictMerge)
+        {
+            StrictMerge = strictMerge;
+        }
+
         public void Process(CompFormat format, string filename)
         {
             string[] args = new string[] { "-c", "copy", "-map", "0:v:0", "-map", "1:a:0" };
             if (!format.VideoFormat.IsDownloaded || !format.AudioFormat.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be merged because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
+            }
+
+            if (format.AudioFormat.AudioCodec == "opus")
+            {
+                if (StrictMerge)
+                {
+                    string message = $"The format {format.Name} cant be merged because opus audio in mp4 is experimental. Disable strict merge to merge anyway.";
+                    LogError(message);
+                    throw new FFMpegException(message);
+                }
+                else
+                {
+                    LogWarning("Opus audio in mp4 is experimental and may not work. Enable strict merge if you dont want to use it.");
+                    args = new string[] { "-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "-strict", "-2" };
+                }
             }
 
             FFMpegRun(new string[] { format.VideoFormat.FileName, format.AudioFormat.FileName }, filename, args);
@@ -248,8 +269,23 @@ namespace YoutubeDL.Postprocessors
             if (!format.VideoFormat.IsDownloaded || !format.AudioFormat.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be merged because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
+            }
+
+            if (format.AudioFormat.AudioCodec == "opus")
+            {
+                if (StrictMerge)
+                {
+                    string message = $"The format {format.Name} cant be merged because opus audio in mp4 is experimental. Disable strict merge to merge anyway.";
+                    LogError(message);
+                    throw new FFMpegException(message);
+                }
+                else
+                {
+                    LogWarning("Opus audio in mp4 is experimental. Enable strict merge if you dont want to use it.");
+                    args = new string[] { "-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "-strict", "-2" };
+                }
             }
 
             await FFMpegRunAsync(new string[] { format.VideoFormat.FileName, format.AudioFormat.FileName }, filename, args, token).ConfigureAwait(false);
@@ -271,14 +307,14 @@ namespace YoutubeDL.Postprocessors
             if (!format.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be converted because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
             if (format.Extension == PreferedFormat)
             {
                 string message = $"Not converting video file {format.FileName} - already is in target format {format.Extension}";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
@@ -297,14 +333,14 @@ namespace YoutubeDL.Postprocessors
             if (!format.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be converted because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
             if (format.Extension == PreferedFormat)
             {
                 string message = $"Not converting video file {format.FileName} - already is in target format {format.Extension}";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
@@ -348,7 +384,7 @@ namespace YoutubeDL.Postprocessors
             if (!format.IsDownloaded)
             {
                 string message = $"The audio cannot be extracted because {format.Name} is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
@@ -444,7 +480,7 @@ namespace YoutubeDL.Postprocessors
             if (!format.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be fixed because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
@@ -463,7 +499,7 @@ namespace YoutubeDL.Postprocessors
             if (!format.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be fixed because it is not downloaded";
-                LogError(message, "ffmpeg");
+                LogError(message);
                 throw new FFMpegException(message);
             }
 
