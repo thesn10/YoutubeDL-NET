@@ -16,6 +16,31 @@ namespace YoutubeDL.Models
         public string Annotations { get; set; }
         [YTDLMeta("duration")]
         public int? Duration { get; set; }
+
+        [YTDLMeta("uploader")]
+        public string Uploader { get; set; }
+        [YTDLMeta("uploader_id")]
+        public string UploaderId { get; set; }
+        [YTDLMeta("uploader_url")]
+        public string UploaderUrl { get; set; }
+        [YTDLMeta("channel")]
+        public string Channel { get; set; }
+        [YTDLMeta("channel_id")]
+        public string ChannelId { get; set; }
+        [YTDLMeta("channel_url")]
+        public string ChannelUrl { get; set; }
+
+        [YTDLMeta("view_count")]
+        public int Views { get; set; }
+        [YTDLMeta("like_count")]
+        public int Likes { get; set; }
+        [YTDLMeta("dislike_count")]
+        public int Dislikes { get; set; }
+        [YTDLMeta("average_rating")]
+        public float AverageRating { get; set; }
+        [YTDLMeta("average_rating")]
+        public List<string> Categories { get; set; }
+
         [YTDLMeta("playlist_index")]
         public int PlaylistIndex { get; set; }
         [YTDLMeta("playlist")]
