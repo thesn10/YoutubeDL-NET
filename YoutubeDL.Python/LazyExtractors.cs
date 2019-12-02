@@ -12,7 +12,7 @@ namespace YoutubeDL
     static class LazyExtractors
     {
         public static Dictionary<string, (string, string)> Extractors { get; private set; } = null;
-        public static string LazyLoadFilePath { get; } = Environment.CurrentDirectory + @"\youtube_dl\extractor\lazy_extractors.bin";
+        public static string LazyLoadFilePath { get; } = AppDomain.CurrentDomain.BaseDirectory + @"\youtube_dl\extractor\lazy_extractors.bin";
 
         public static void LoadLazyExtractors(bool forceRebuild = false, bool forceReload = false)
         {
@@ -38,6 +38,8 @@ namespace YoutubeDL
             {
                 using (PyScope ps = Py.CreateScope())
                 {
+                    dynamic sys = ps.Import("sys");
+                    sys.path.insert(0, AppDomain.CurrentDomain.BaseDirectory);
                     dynamic ext = ps.Import("youtube_dl.extractor");
                     foreach (dynamic eclass in ext._ALL_CLASSES)
                     {
