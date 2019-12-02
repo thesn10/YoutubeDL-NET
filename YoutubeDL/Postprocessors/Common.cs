@@ -12,7 +12,7 @@ namespace YoutubeDL.Postprocessors
 
     }
 
-    public interface IPostProcessor<T> : IPostProcessor, IHasLog, IHasProgress where T : IFormat
+    public interface IPostProcessor<in T> : IPostProcessor, IHasLog, IHasProgress where T : IFormat
     {
         public void Process(T format, string filename);
         public Task ProcessAsync(T format, string filename, CancellationToken token = default);

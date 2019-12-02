@@ -16,6 +16,7 @@ using YoutubeDL.Extractors;
 using YoutubeDL.Postprocessors;
 using YoutubeDL.Models;
 using System.Diagnostics;
+using System.Threading;
 
 [assembly: InternalsVisibleTo("YoutubeDL.Python")]
 namespace YoutubeDL
@@ -110,6 +111,7 @@ namespace YoutubeDL
 
         internal void ProgressBar(object sender, ProgressEventArgs e, string id, string operation, ConsoleColor color = ConsoleColor.Green) 
         {
+            if (Options.Quiet) return;
             int totalChunks = 30;
             //Debug.WriteLine("val: " + e.Value + ", total: " + e.Total);
 
@@ -477,97 +479,14 @@ namespace YoutubeDL
 
                     // *check if format already downloaded*
 
-                    List<Task> downloadTasks = new List<Task>();
+                    List<Task> formatTasks = new List<Task>();
 
                     foreach (IFormat f in formats_to_download)
                     {
-                        string fname = PrepareFilename(f, filename);
-                        // download
-                        if (f is CompFormat cf)
-                        {
-                            FFMpegMergerPP ff = new FFMpegMergerPP(Options.StrictMerge);
-                            if (!ff.Available)
-                            {
-                                LogWarning("ffmpeg or avconf is not installed, skipping " + cf.Id);
-                                continue;
-                            }
-
-                            // we dont support merging yet, so just download both
-                            string aname = PrepareFilename(cf.AudioFormat, filename);
-                            FileDownloader l = FileDownloader.GetSuitableDownloader(cf.AudioFormat.Protocol);
-                            l.OnProgress += (sender, e) => ProgressBar(sender, e, cf.AudioFormat.Id, "Downloading");
-                            Task atask = l.DownloadAsync(cf.AudioFormat, aname, true);
-                            //downloadTasks.Add(dTask1);
-                            cf.AudioFormat.FileName = aname;
-                            cf.AudioFormat.IsDownloaded = true;
-
-                            string vname = PrepareFilename(cf.VideoFormat, filename);
-                            FileDownloader l2 = FileDownloader.GetSuitableDownloader(cf.VideoFormat.Protocol);
-                            l2.OnProgress += (sender, e) => ProgressBar(sender, e, cf.VideoFormat.Id, "Downloading");
-                            Task vtask = l2.DownloadAsync(cf.VideoFormat, vname, true);
-                            //downloadTasks.Add(dTask2);
-                            cf.VideoFormat.FileName = vname;
-                            cf.VideoFormat.IsDownloaded = true;
-
-                            await atask;
-                            await vtask;
-
-                            ff.OnLog += Log;
-                            ff.OnProgress += (sender, e) => ProgressBar(sender, e, cf.Id, "Merging", ConsoleColor.Cyan);
-                            await ff.ProcessAsync(cf, fname);
-                            LogDebug("Merged");
-
-                        }
-                        else
-                        {
-                            FileDownloader l3 = FileDownloader.GetSuitableDownloader(f.Protocol);
-                            l3.OnProgress += (sender, e) => ProgressBar(sender, e, f.Id, "Downloading");
-                            Task dTask = l3.DownloadAsync(f, fname, true);
-                            downloadTasks.Add(dTask);
-                            f.FileName = fname;
-                            f.IsDownloaded = true;
-                        }
-
-                        if (success && filename != "-")
-                        {
-
-                            // *check and fixup stretched aspect ratio*
-                            if (f is IVideoFormat vf && vf.StretchedRatio != null && vf.StretchedRatio != 1)
-                            {
-                                if (Options.Fixup == FixupPolicy.Warn)
-                                {
-                                    LogWarning("Stretched Aspect Ratio detected");
-                                }
-                                else if (Options.Fixup == FixupPolicy.DetectOrWarn)
-                                {
-                                    LogWarning("Stretched Aspect Ratio detected");
-                                    FFMpegFixupAspectRatioPP pp = new FFMpegFixupAspectRatioPP();
-                                    pp.OnLog += Log;
-                                    pp.OnProgress += (sender, e) => ProgressBar(sender, e, vf.Id, "Fixing Aspect Ratio", ConsoleColor.Magenta);
-                                    await pp.ProcessAsync(vf, vf.FileName);
-                                }
-                            }
-
-                            // *manage DASH m4a format*
-
-                            // *manage M3U8 format*
-
-                            try
-                            {
-                                PostProcess(filename, video);
-                            }
-                            catch (Exception ex)
-                            {
-                                LogError("postprocessing: " + ex.Message);
-                            }
-
-                            // *record_download_archive*
-                        }
-
-                        //LogWarning("ffmpeg or avconf is not installed.");
+                        formatTasks.Add(ProcessFormat(filename, f));
                     }
 
-                    await Task.WhenAll(downloadTasks).ConfigureAwait(false);
+                    await Task.WhenAll(formatTasks).ConfigureAwait(false);
 
                     // **
                 }
@@ -582,6 +501,102 @@ namespace YoutubeDL
             {
                 throw e;// *catch and manage all exeptions*
             }
+        }
+
+        public async Task ProcessFormat(string filename, IFormat format)
+        {
+            string fname = PrepareFilename(format, filename);
+            try
+            {
+                // download
+                if (format is CompFormat cf)
+                {
+                    FFMpegMergerPP ff = new FFMpegMergerPP(Options.StrictMerge);
+                    if (!ff.Available)
+                    {
+                        LogWarning("ffmpeg or avconf is not installed, skipping " + cf.Id);
+                        return;
+                    }
+
+                    // we dont support merging yet, so just download both
+                    string aname = PrepareFilename(cf.AudioFormat, filename);
+                    FileDownloader l = FileDownloader.GetSuitableDownloader(cf.AudioFormat.Protocol);
+                    l.OnProgress += (sender, e) => ProgressBar(sender, e, cf.AudioFormat.Id, "Downloading");
+                    Task atask = l.DownloadAsync(cf.AudioFormat, aname, true);
+                    //downloadTasks.Add(dTask1);
+                    cf.AudioFormat.FileName = aname;
+                    cf.AudioFormat.IsDownloaded = true;
+
+                    string vname = PrepareFilename(cf.VideoFormat, filename);
+                    FileDownloader l2 = FileDownloader.GetSuitableDownloader(cf.VideoFormat.Protocol);
+                    l2.OnProgress += (sender, e) => ProgressBar(sender, e, cf.VideoFormat.Id, "Downloading");
+                    Task vtask = l2.DownloadAsync(cf.VideoFormat, vname, true);
+                    //downloadTasks.Add(dTask2);
+                    cf.VideoFormat.FileName = vname;
+                    cf.VideoFormat.IsDownloaded = true;
+
+                    await atask;
+                    await vtask;
+
+                    ff.OnLog += Log;
+                    ff.OnProgress += (sender, e) => ProgressBar(sender, e, cf.Id, "Merging", ConsoleColor.Cyan);
+                    await ff.ProcessAsync(cf, fname);
+                    LogDebug("Merged");
+
+                }
+                else
+                {
+                    FileDownloader l3 = FileDownloader.GetSuitableDownloader(format.Protocol);
+                    l3.OnProgress += (sender, e) => ProgressBar(sender, e, format.Id, "Downloading");
+                    Task dTask = l3.DownloadAsync(format, fname, true);
+                    await dTask;
+                    format.FileName = fname;
+                    format.IsDownloaded = true;
+                }
+            }
+            catch (Exception e)
+            {
+                LogError($"Failed to download format {format.Id}: {e.Message}");
+                return;
+            }
+
+            if (fname != "-")
+            {
+
+                // *check and fixup stretched aspect ratio*
+                if (format is IVideoFormat vf && vf.StretchedRatio != null && vf.StretchedRatio != 1)
+                {
+                    if (Options.Fixup == FixupPolicy.Warn)
+                    {
+                        LogWarning("Stretched Aspect Ratio detected");
+                    }
+                    else if (Options.Fixup == FixupPolicy.DetectOrWarn)
+                    {
+                        LogWarning("Stretched Aspect Ratio detected");
+                        FFMpegFixupAspectRatioPP pp = new FFMpegFixupAspectRatioPP();
+                        pp.OnLog += Log;
+                        pp.OnProgress += (sender, e) => ProgressBar(sender, e, vf.Id, "Fixing Aspect Ratio", ConsoleColor.Magenta);
+                        await pp.ProcessAsync(vf, fname);
+                    }
+                }
+
+                // *manage DASH m4a format*
+
+                // *manage M3U8 format*
+
+                try
+                {
+                    await PostProcess(fname, format);
+                }
+                catch (Exception ex)
+                {
+                    LogError("postprocessing: " + ex.Message);
+                }
+
+                // *record_download_archive*
+            }
+
+            //LogWarning("ffmpeg or avconf is not installed.");
         }
 
         public async Task<InfoDict> ProcessPlaylistResult(Playlist ie_result, bool download = true)
@@ -813,9 +828,27 @@ namespace YoutubeDL
             return formattedstr;
         }
 
-        public void PostProcess(string filename, Video video)
+        public List<IPostProcessor> PostProcessors { get; } = new List<IPostProcessor>() { };
+        public async Task PostProcess(string filename, IFormat format, CancellationToken token = default)
         {
-
+            PostProcessors.Add(new FFMpegAudioExtractorPP("mp3"));
+            foreach (IPostProcessor pp in PostProcessors)
+            {
+                Type generic = pp.GetType()
+                    .GetInterfaces()
+                    .Where(
+                        x => x.IsGenericType && 
+                        x.GetGenericTypeDefinition() == typeof(IPostProcessor<>))
+                    .First().GenericTypeArguments[0];
+                if (generic.IsAssignableFrom(format.GetType()))
+                {
+                    await (Task)pp.GetType().GetMethod("ProcessAsync").Invoke(pp, new object[] { format, filename, token });
+                }
+                else
+                {
+                    LogWarning($"PostProcesssor is incompatible with format {format.Id} because the format is not a {generic.Name}");
+                }
+            }
         }
 
         public async Task DownloadFormat(Video video, string format, bool processSubtitles = false)
@@ -833,7 +866,7 @@ namespace YoutubeDL
             }
         }
 
-        public void DownloadFormat(IFormat format, bool processSubtitles = false)
+        public void DownloadFormat(params IFormat[] format)
         {
             // todo
         }

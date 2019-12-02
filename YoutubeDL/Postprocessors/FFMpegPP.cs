@@ -52,6 +52,7 @@ namespace YoutubeDL.Postprocessors
             }*/
 
             Filename = "ffmpeg";
+            ProbeFilename = "ffprobe";
         }
 
         public bool Available 
@@ -150,7 +151,8 @@ namespace YoutubeDL.Postprocessors
             ProcessStartInfo i = new ProcessStartInfo(ProbeFilename, string.Join(' ', args))
             {
                 CreateNoWindow = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             };
 
             using Process p = new Process
@@ -162,15 +164,16 @@ namespace YoutubeDL.Postprocessors
 
             if (p.ExitCode != 0)
             {
+                //Debug.WriteLine("Error:" + p.StandardError.ReadToEnd());
                 throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
             }
 
-            return p.StandardOutput;
+            return p.StandardError;
         }
 
         public async Task<string> GetAudioCodec(string path)
         {
-            var sr = ExecuteProbe(new string[] { "-show_streams", path });
+            var sr = ExecuteProbe(new string[] { "-show_streams", "\"file:" + path + "\"" });
             string codec = null;
             string line;
 
