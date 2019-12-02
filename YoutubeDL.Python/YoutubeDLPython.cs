@@ -24,6 +24,7 @@ namespace YoutubeDL.Python
 {
     internal static class YoutubeDLPython
     {
+        private static PyScope PyScope;
         public static async Task CheckDownloadYTDLPython(YouTubeDL ytdl)
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -59,10 +60,21 @@ namespace YoutubeDL.Python
         {
             // EXPERIMENTAL CODE
             await CheckDownloadYTDLPython(ytdl);
+
+            IntPtr state2 = IntPtr.Zero;
+            bool mainRun = false;
             Py.GILState state;
             try
             {
-                state = Py.GIL();
+                if (!PythonEngine.IsInitialized)
+                {
+                    mainRun = true;
+                    PythonEngine.Initialize();
+                    PythonEngine.BeginAllowThreads();
+                    state2 = PythonEngine.AcquireLock();
+                    state = null;
+                }
+                else state = Py.GIL();
             } 
             catch 
             {
@@ -70,11 +82,14 @@ namespace YoutubeDL.Python
                 throw new InvalidOperationException("Python is not installed!");
             }
 
-            using PyScope PyScope = Py.CreateScope("extractorscope");
+            if (PyScope == null)
+                PyScope = Py.CreateScope("extractorscope");
 
             if (ytdl.Options.LazyLoad)
             {
                 dynamic re = PyScope.Import("re");
+                dynamic sys = PyScope.Import("sys");
+                sys.path.insert(0, AppDomain.CurrentDomain.BaseDirectory);
                 ytdl.LogDebug("Loading python extractors");
                 LazyExtractors.LoadLazyExtractors();
                 foreach (var r in LazyExtractors.Extractors)
@@ -113,7 +128,10 @@ namespace YoutubeDL.Python
                         InfoDict ie_result = PyInfoDict.FromPythonDict(info_dict);
 
                         AddDefaultExtraInfo(ytdl, ie_result, ie, url);
-                        state.Dispose();
+                        if (mainRun)
+                            PythonEngine.ReleaseLock(state2);
+                        else
+                            state.Dispose();
 
                         if (process)
                         {
@@ -134,10 +152,16 @@ namespace YoutubeDL.Python
                     {
 
                     }
-                    state.Dispose();
+                    if (mainRun)
+                        PythonEngine.ReleaseLock(state2);
+                    else
+                        state.Dispose();
                     return null;
                 }
-                state.Dispose();
+                if (mainRun)
+                    PythonEngine.ReleaseLock(state2);
+                else
+                    state.Dispose();
                 return null;
             }
             else
@@ -177,7 +201,10 @@ namespace YoutubeDL.Python
                         InfoDict ie_result = PyInfoDict.FromPythonDict(info_dict);
 
                         AddDefaultExtraInfo(ytdl, ie_result, extractor, url);
-                        state.Dispose();
+                        if (mainRun)
+                            PythonEngine.ReleaseLock(state2);
+                        else
+                            state.Dispose();
 
                         if (process)
                         {
@@ -201,11 +228,17 @@ namespace YoutubeDL.Python
                         ytdl.LogError("Max downloads reached");
                         throw e;
                     }
-                    state.Dispose();
+                    if (mainRun)
+                        PythonEngine.ReleaseLock(state2);
+                    else
+                        state.Dispose();
                     return null;
                 }
 
-                state.Dispose();
+                if (mainRun)
+                    PythonEngine.ReleaseLock(state2);
+                else
+                    state.Dispose();
                 return null;
             }
         }
