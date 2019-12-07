@@ -246,6 +246,7 @@ namespace YoutubeDL.Postprocessors
                 throw new FFMpegException(message);
             }
 
+            /*
             if (format.AudioFormat.AudioCodec == "opus")
             {
                 if (StrictMerge)
@@ -259,7 +260,7 @@ namespace YoutubeDL.Postprocessors
                     LogWarning("Opus audio in mp4 is experimental and may not work. Enable strict merge if you dont want to use it.");
                     args = new string[] { "-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "-strict", "-2" };
                 }
-            }
+            }*/
 
             FFMpegRun(new string[] { format.VideoFormat.FileName, format.AudioFormat.FileName }, filename, args);
             format.FileName = filename;
