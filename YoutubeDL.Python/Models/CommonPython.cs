@@ -11,7 +11,7 @@ namespace YoutubeDL.Models
     {
         public static InfoDict FromPythonDict(dynamic pythonInfoDict, string type = null)
         {
-            Dictionary<string, object> infoDict = PythonCompat.PythonDictToManaged(pythonInfoDict);
+            Dictionary<string, object> infoDict = PythonCompat.PythonObjectToManaged(pythonInfoDict);
             if (!infoDict.ContainsKey("_type"))
             {
                 if (type != null)

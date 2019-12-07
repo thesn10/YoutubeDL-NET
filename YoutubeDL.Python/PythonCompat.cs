@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using Python.Runtime;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -62,76 +62,73 @@ namespace YoutubeDL.Python
                 PyBuffer_Release(view);
             }
         }
+        public static PyObject ManagedObjectToPython(object obj) => ManagedObjectToPython(obj, obj.GetType());
 
-        public static Dictionary<string, object> PythonDictToManaged(dynamic pythonDict)
+        public static PyObject ManagedObjectToPython(object obj, Type pyType)
         {
-            Dictionary<string, object> infoDict = new Dictionary<string, object>();
-            foreach (string key in pythonDict)
+            if (obj is string || obj is int || obj is float || obj is null)
             {
-                switch ((string)pythonDict[key].__class__.__name__)
-                {
-                    case "str":
-                        infoDict.Add(key, (string)pythonDict[key]);
-                        break;
-                    case "int":
-                        infoDict.Add(key, (int)pythonDict[key]);
-                        break;
-                    case "float":
-                        infoDict.Add(key, (float)pythonDict[key]);
-                        break;
-                    case "dict":
-                        infoDict.Add(key, PythonCompat.PythonDictToManaged(pythonDict[key]));
-                        break;
-                    case "list":
-                        infoDict.Add(key, PythonCompat.PythonListToManaged(pythonDict[key]));
-                        break;
-                    case "generator":
-                        PyObject obj = (PyObject)pythonDict[key];
-                        dynamic list = new PyList(Runtime.PySequence_List(obj.Handle));
-                        infoDict.Add(key, PythonCompat.PythonListToManaged(list));
-                        break;
-                    case "NoneType":
-                        infoDict.Add(key, null);
-                        break;
-                    default:
-                        Debug.WriteLine("unsupported type:" + (string)pythonDict[key].__class__.__name__);
-                        break;
-                }
+                return obj.ToPython();
             }
-            return infoDict;
+            else if (typeof(IList).IsAssignableFrom(pyType))
+            {
+                PyList list = new PyList();
+                for (int i = 0; i < (obj as IList).Count; i++)
+                {
+                    if (!(obj as IList)[i].GetType().IsPrimitive) continue;
+                    list.SetItem(i, (obj as IList)[i].ToPython());
+                }
+                return list;
+            }
+            else if (typeof(IDictionary).IsAssignableFrom(pyType))
+            {
+                PyDict dict = new PyDict();
+                foreach (DictionaryEntry kv in (obj as IDictionary))
+                {
+                    if (!kv.Value.GetType().IsPrimitive) continue;
+                    dict.SetItem(kv.Key.ToPython(), kv.Value.ToPython());
+                }
+                return dict;
+            }
+            else throw new NotSupportedException("Unsupported type: " + obj.GetType().Name);
         }
 
-        public static List<object> PythonListToManaged(dynamic pythonList)
+        public static object PythonObjectToManaged(dynamic pythonObj)
         {
-            List<object> infoDict = new List<object>();
-            foreach (dynamic val in pythonList)
+            switch ((string)pythonObj.__class__.__name__)
             {
-                switch ((string)val.__class__.__name__)
-                {
-                    case "str":
-                        infoDict.Add((string)val);
-                        break;
-                    case "int":
-                        infoDict.Add((int)val);
-                        break;
-                    case "float":
-                        infoDict.Add((float)val);
-                        break;
-                    case "dict":
-                        infoDict.Add(PythonCompat.PythonDictToManaged(val));
-                        break;
-                    case "list":
-                        infoDict.Add(PythonCompat.PythonListToManaged(val));
-                        break;
-                    case "NoneType":
-                        infoDict.Add(null);
-                        break;
-                    default:
-                        Debug.WriteLine("unsupported type:" + (string)val.__class__.__name__);
-                        break;
-                }
+                case "str":
+                    return (string)pythonObj;
+                case "int":
+                    return (int)pythonObj;
+                case "float":
+                    return (float)pythonObj;
+                case "bool":
+                    return (bool)pythonObj;
+                case "dict":
+                    Dictionary<string, object> infoDict = new Dictionary<string, object>();
+                    foreach (string key in pythonObj)
+                    {
+                        infoDict.Add(key, PythonCompat.PythonObjectToManaged(pythonObj[key]));
+                    }
+                    return infoDict;
+                case "list":
+                    List<object> infoDict2 = new List<object>();
+                    foreach (dynamic val in pythonObj)
+                    {
+                        infoDict2.Add(PythonCompat.PythonObjectToManaged(val));
+                    }
+                    return infoDict2;
+                case "generator":
+                    PyObject obj = (PyObject)pythonObj;
+                    dynamic list = new PyList(Runtime.PySequence_List(obj.Handle));
+                    return PythonCompat.PythonObjectToManaged(list);
+                case "NoneType":
+                    return null;
+                default:
+                    Debug.WriteLine("Unsupported type: " + (string)pythonObj.__class__.__name__);
+                    throw new NotSupportedException("Unsupported type: " + (string)pythonObj.__class__.__name__);
             }
-            return infoDict;
         }
     }
 }

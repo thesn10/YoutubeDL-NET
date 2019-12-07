@@ -38,7 +38,7 @@ class FakeYTDL(object):
         self.cs_ytdl = ytdl
         self.params = self.cs_ytdl.GetOptions()
         #self.cache = Cache(self)
-        self.cache = FakeCache()
+        self.cache = FakeCache(ytdl)
         self.cookiejar = FakeCookieJar(ytdl)
         self._setup_opener()
         return
@@ -188,13 +188,14 @@ class FakeCookieJar():
         return
 
 class FakeCache():
-    def __init__(self):
+    def __init__(self, ytdl):
+        self.cs_ytdl = ytdl
         return
 
     def load(self, section, key, dtype='json', default=None):
-        # todo
+        return self.cs_ytdl.CacheLoad(section, key, default)
         return
 
     def store(self, section, key, data, dtype='json'):
-        # todo
+        self.cs_ytdl.CacheStore(section, key, data)
         return

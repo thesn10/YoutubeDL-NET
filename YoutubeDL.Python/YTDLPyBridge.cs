@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.IO;
+using System.Diagnostics;
 
 namespace YoutubeDL.Python
 {
@@ -86,7 +89,7 @@ namespace YoutubeDL.Python
 
                 if (pheaders != null)
                 {
-                    Dictionary<string, object> headers = PythonCompat.PythonDictToManaged(pheaders);
+                    Dictionary<string, object> headers = PythonCompat.PythonObjectToManaged(pheaders);
                     foreach (var header in headers)
                     {
                         req.Headers.Add(header.Key, (string)header.Value);
@@ -180,12 +183,94 @@ namespace YoutubeDL.Python
 
         public void CacheStore(string section, string key, PyObject data)
         {
+            //Debug.WriteLine("CacheStore");
+            if (ytdl.Options.CacheDir == null) return;
+            string cachepath = Path.Combine(ytdl.Options.CacheDir, "cache.json");
 
+            dynamic dynData = data;
+            object obj = (List<object>)PythonCompat.PythonObjectToManaged(dynData);
+
+            string str = JsonSerializer.Serialize(obj, obj.GetType());
+            Debug.WriteLine(str);
+
+            using var readstream = File.Open(cachepath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
+            using var writestream = File.Open(cachepath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+            using var writer = new Utf8JsonWriter(writestream, new JsonWriterOptions { Indented = true });
+
+            writer.WriteStartObject();
+            bool sectionWritten = false;
+            try
+            {
+                using var reader = JsonDocument.Parse(readstream);
+                foreach (var elem in reader.RootElement.EnumerateObject())
+                {
+                    if (elem.Name == section)
+                    {
+                        writer.WriteStartObject(section);
+                        foreach (var kElem in elem.Value.EnumerateObject())
+                        {
+                            if (kElem.Name != key)
+                            {
+                                kElem.WriteTo(writer);
+                            }
+                        }
+                        writer.WriteStartObject(key);
+                        writer.WriteString("type", obj.GetType().FullName);
+                        writer.WritePropertyName("value");
+                        JsonSerializer.Serialize(writer, obj, obj.GetType());
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        sectionWritten = true;
+                    }
+                    else
+                    {
+                        elem.WriteTo(writer);
+                    }
+                }
+            }
+            catch { }
+            if (!sectionWritten)
+            {
+                writer.WriteStartObject(section);
+                writer.WriteStartObject(key);
+                writer.WriteString("type", obj.GetType().FullName);
+                writer.WritePropertyName("value");
+                JsonSerializer.Serialize(writer, obj, obj.GetType());
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                sectionWritten = true;
+            }
+
+            writer.WriteEndObject();
         }
 
-        public void CacheLoad(string section, string key, string def = null)
+        public PyObject CacheLoad(string section, string key, PyObject def = null)
         {
+            //Debug.WriteLine("CacheLoad");
+            if (ytdl.Options.CacheDir == null) return def;
+            string cachepath = Path.Combine(ytdl.Options.CacheDir, "cache.json");
 
+            if (!File.Exists(cachepath)) return def;
+
+            using var stream = File.OpenRead(cachepath);
+            using var reader = JsonDocument.Parse(stream);
+
+            var bytes = new byte[stream.Length];
+            stream.Read(bytes, 0, bytes.Length);
+            var xreader = new Utf8JsonReader(bytes);
+
+            if (reader.RootElement.TryGetProperty(section, out var sectElem))
+            {
+                if (sectElem.TryGetProperty(key, out var keyElem))
+                {
+                    var type = Type.GetType(keyElem.GetProperty("type").GetString());
+                    var value = keyElem.GetProperty("value").GetRawText();
+                    object managed = JsonSerializer.Deserialize(value, type);
+                    return PythonCompat.ManagedObjectToPython(managed, type);
+                }
+            }
+            //Debug.WriteLine("def");
+            return def;
         }
 
         public void ToScreen(string message, bool skip_eol = false)

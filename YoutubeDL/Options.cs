@@ -270,7 +270,7 @@ namespace YoutubeDL
         /// <see cref="null"/> to disable filesystem cache.
         /// </summary>
         [YTDLMeta("cachedir")]
-        public string CacheDir { get; set; }
+        public string CacheDir { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
         /// <summary>
         /// Download single video instead of a playlist if in doubt.
         /// </summary>
