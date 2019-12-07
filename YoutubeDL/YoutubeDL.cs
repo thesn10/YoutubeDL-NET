@@ -8,8 +8,7 @@ using System.Text.RegularExpressions;
 using System.Net;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
-// netcore
-//using System.Text.Json;
+using System.Text.Json;
 
 using YoutubeDL.Downloaders;
 using YoutubeDL.Extractors;
@@ -956,8 +955,8 @@ namespace YoutubeDL
                 using FileStream f = File.Open(filename, fm, FileAccess.Write);
                 using StreamWriter w = new StreamWriter(f);
 
-                //string json = JsonSerializer.Serialize(video, video.GetType())
-                //await w.WriteAsync(json);
+                string json = JsonSerializer.Serialize(video, video.GetType());
+                await w.WriteAsync(json);
             }
             catch (Exception ex)
             {
@@ -1008,8 +1007,7 @@ namespace YoutubeDL
             }
             if (Options.ForceJson)
             {
-                // netcore
-                //LogInfo(JsonSerializer.Serialize(video, video.GetType()));
+                LogInfo(JsonSerializer.Serialize(video, video.GetType()));
             }
         }
 
