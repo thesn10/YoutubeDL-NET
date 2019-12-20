@@ -22,10 +22,10 @@ using YoutubeDL.Downloaders;
 [assembly: InternalsVisibleTo("YoutubeDL")]
 namespace YoutubeDL.Python
 {
-    internal static class YoutubeDLPython
+    public static class YoutubeDLPython
     {
         private static PyScope PyScope;
-        public static async Task CheckDownloadYTDLPython(YouTubeDL ytdl)
+        internal static async Task CheckDownloadYTDLPython(this YouTubeDL ytdl)
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             if (Directory.Exists(baseDir + "/youtube_dl")) return;
@@ -52,6 +52,15 @@ namespace YoutubeDL.Python
             Directory.Delete(baseDir + $"/youtube-dl-{version}", true);
         }
 
+        public static void InitPython(this YouTubeDL dl)
+        {
+            if (!PythonEngine.IsInitialized)
+            {
+                PythonEngine.Initialize();
+                PythonEngine.BeginAllowThreads();
+            }
+        }
+
         public static async Task<InfoDict> PythonExtractInfo(
             this YouTubeDL ytdl,
             string url, bool download = true, string ie_key = null,
@@ -61,20 +70,11 @@ namespace YoutubeDL.Python
             // EXPERIMENTAL CODE
             await CheckDownloadYTDLPython(ytdl);
 
-            IntPtr state2 = IntPtr.Zero;
-            bool mainRun = false;
             Py.GILState state;
             try
             {
-                if (!PythonEngine.IsInitialized)
-                {
-                    mainRun = true;
-                    PythonEngine.Initialize();
-                    PythonEngine.BeginAllowThreads();
-                    state2 = PythonEngine.AcquireLock();
-                    state = null;
-                }
-                else state = Py.GIL();
+                InitPython(ytdl);
+                state = Py.GIL();
             } 
             catch 
             {
@@ -128,10 +128,7 @@ namespace YoutubeDL.Python
                         InfoDict ie_result = PyInfoDict.FromPythonDict(info_dict);
 
                         AddDefaultExtraInfo(ytdl, ie_result, ie, url);
-                        if (mainRun)
-                            PythonEngine.ReleaseLock(state2);
-                        else
-                            state.Dispose();
+                        state.Dispose();
 
                         if (process)
                         {
@@ -152,16 +149,10 @@ namespace YoutubeDL.Python
                     {
 
                     }
-                    if (mainRun)
-                        PythonEngine.ReleaseLock(state2);
-                    else
-                        state.Dispose();
+                    state.Dispose();
                     return null;
                 }
-                if (mainRun)
-                    PythonEngine.ReleaseLock(state2);
-                else
-                    state.Dispose();
+                state.Dispose();
                 return null;
             }
             else
@@ -201,10 +192,7 @@ namespace YoutubeDL.Python
                         InfoDict ie_result = PyInfoDict.FromPythonDict(info_dict);
 
                         AddDefaultExtraInfo(ytdl, ie_result, extractor, url);
-                        if (mainRun)
-                            PythonEngine.ReleaseLock(state2);
-                        else
-                            state.Dispose();
+                        state.Dispose();
 
                         if (process)
                         {
@@ -228,17 +216,11 @@ namespace YoutubeDL.Python
                         ytdl.LogError("Max downloads reached");
                         throw e;
                     }
-                    if (mainRun)
-                        PythonEngine.ReleaseLock(state2);
-                    else
-                        state.Dispose();
+                    state.Dispose();
                     return null;
                 }
 
-                if (mainRun)
-                    PythonEngine.ReleaseLock(state2);
-                else
-                    state.Dispose();
+                state.Dispose();
                 return null;
             }
         }
