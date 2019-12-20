@@ -100,7 +100,9 @@ namespace YoutubeDL.Python
                 case "str":
                     return (string)pythonObj;
                 case "int":
-                    return (int)pythonObj;
+                    long num = (long)pythonObj;
+                    if (num >= int.MaxValue || num <= int.MinValue) return num;
+                    else return (int)num;
                 case "float":
                     return (float)pythonObj;
                 case "bool":

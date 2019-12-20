@@ -86,14 +86,15 @@ namespace YoutubeDL.Models
                     .Where(delegate (PropertyInfo p)
                     {
                         var attr = (p.GetCustomAttribute(typeof(YTDLMetaAttribute)) as YTDLMetaAttribute);
-                        return attr?.PythonName == kv.Key;
+                        return attr?.PythonName == kv.Key && attr.AutoFill;
                     })
                     .FirstOrDefault();
 
                 if (pInfo != default)
                 {
                     if (pInfo.GetValue(this) != null && !overwrite) continue;
-                    pInfo.SetValue(this, kv.Value);
+                    object val = pInfo.PropertyType == typeof(int) || pInfo.PropertyType == typeof(int?) ? Convert.ToInt32(kv.Value) : kv.Value; // long to int
+                    pInfo.SetValue(this, val);
                 }
                 else
                 {
@@ -102,14 +103,15 @@ namespace YoutubeDL.Models
                         .Where(delegate (FieldInfo p)
                         {
                             var attr = (p.GetCustomAttribute(typeof(YTDLMetaAttribute)) as YTDLMetaAttribute);
-                            return attr?.PythonName == kv.Key;
+                            return attr?.PythonName == kv.Key && attr.AutoFill;
                         })
                         .FirstOrDefault();
 
                     if (fInfo != default)
                     {
                         if (fInfo.GetValue(this) != null && !overwrite) continue;
-                        fInfo.SetValue(this, kv.Value);
+                        object val = fInfo.FieldType == typeof(int) || fInfo.FieldType == typeof(int?) ? Convert.ToInt32(kv.Value) : kv.Value; // long to int
+                        fInfo.SetValue(this, val);
                     }
                     else if (AdditionalProperties.ContainsKey(kv.Key))
                     {

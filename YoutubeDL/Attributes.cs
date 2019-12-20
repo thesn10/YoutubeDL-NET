@@ -13,6 +13,7 @@ namespace YoutubeDL
         public string ArgName { get; set; }
         public string ShortArgName { get; set; }
         public string Description { get; set; }
+        public bool AutoFill { get; set; } = true;
         public YTDLMetaAttribute(string pythonName, string shortArgName = null)
         {
             this.PythonName = pythonName;

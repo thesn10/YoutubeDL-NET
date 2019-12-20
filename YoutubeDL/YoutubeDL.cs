@@ -998,8 +998,7 @@ namespace YoutubeDL
             }
             if (Options.ForceDuration && video.Duration != null)
             {
-                string duration = TimeSpan.FromSeconds((double)video.Duration).ToString();
-                LogInfo(duration);
+                LogInfo(video.Duration.ToString());
             }
             if (Options.ForceFormat && video.Formats != null)
             {

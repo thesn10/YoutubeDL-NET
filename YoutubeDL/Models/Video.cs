@@ -14,8 +14,8 @@ namespace YoutubeDL.Models
         public string Description { get; set; }
         [YTDLMeta("annotations")]
         public string Annotations { get; set; }
-        [YTDLMeta("duration")]
-        public int? Duration { get; set; }
+        [YTDLMeta("duration", AutoFill = false)]
+        public TimeSpan Duration { get; set; }
 
         [YTDLMeta("uploader")]
         public string Uploader { get; set; }
@@ -103,6 +103,11 @@ namespace YoutubeDL.Models
             if (infoDict.TryGetValue("timestamp", out object timestamp))
             {
                 UploadDate = DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64((string)timestamp)).UtcDateTime;
+            }
+
+            if (infoDict.TryGetValue("duration", out object duration))
+            {
+                Duration = TimeSpan.FromSeconds((int)duration);
             }
 
             if (infoDict.TryGetValue("subtitles", out object subs))
