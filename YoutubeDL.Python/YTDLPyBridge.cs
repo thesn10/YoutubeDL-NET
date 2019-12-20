@@ -193,8 +193,13 @@ namespace YoutubeDL.Python
             string str = JsonSerializer.Serialize(obj, obj.GetType());
             Debug.WriteLine(str);
 
-            using var readstream = File.Open(cachepath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
-            using var writestream = File.Open(cachepath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+            string readstream = string.Empty;
+            if (File.Exists(cachepath))
+            {
+                using var sr = new StreamReader(cachepath);
+                readstream = sr.ReadToEnd();
+            }
+            using var writestream = File.Open(cachepath, FileMode.Create, FileAccess.Write);
             using var writer = new Utf8JsonWriter(writestream, new JsonWriterOptions { Indented = true });
 
             writer.WriteStartObject();
@@ -202,6 +207,7 @@ namespace YoutubeDL.Python
             try
             {
                 using var reader = JsonDocument.Parse(readstream);
+
                 foreach (var elem in reader.RootElement.EnumerateObject())
                 {
                     if (elem.Name == section)
