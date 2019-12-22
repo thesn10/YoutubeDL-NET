@@ -7,6 +7,21 @@ using System.Text;
 
 namespace YoutubeDL.Models
 {
+    public static class FormatCollectionExt
+    {
+        public static IList<IFormat> SelectFormats(this IList<IFormat> formats, string format_spec, string mergeOutputFormat = null)
+            => FormatParser.SelectFormats(formats, format_spec, mergeOutputFormat);
+        public static IEnumerable<IAudioFormat> WithAudio(this IEnumerable<IFormat> formats) => formats.Where(x => x is IAudioFormat).Select(x => (IAudioFormat)x);
+        public static IEnumerable<IVideoFormat> WithVideo(this IEnumerable<IFormat> formats) => formats.Where(x => x is IVideoFormat).Select(x => (IVideoFormat)x);
+        public static IEnumerable<IAudioFormat> GetAudioOnlyFormats(this IEnumerable<IFormat> formats) => formats.WithAudio().Where(x => !(x is IVideoFormat));
+        public static IEnumerable<IVideoFormat> GetVideoOnlyFormats(this IEnumerable<IFormat> formats) => formats.WithVideo().Where(x => !(x is IAudioFormat));
+        public static IEnumerable<IMuxedFormat> GetMuxedFormats(this IEnumerable<IFormat> formats) => formats.Where(x => x is IMuxedFormat).Select(x => (IMuxedFormat)x);
+
+        public static IMuxedFormat MuxedWithBestResolution(this IEnumerable<IFormat> formats) => formats.GetMuxedFormats().OrderByDescending(x => x.Height).First();
+        public static IVideoFormat WithBestVideoResolution(this IEnumerable<IFormat> formats) => formats.WithVideo().OrderByDescending(x => x.Height).First();
+        public static IAudioFormat WithBestAudioBitrate(this IEnumerable<IFormat> formats) => formats.WithAudio().OrderByDescending(x => x.AudioBitrate).First();
+    }
+
     public class FormatCollection : ReadOnlyCollection<IFormat>
     {
         public FormatCollection(IList<IFormat> formats) : base(formats)
