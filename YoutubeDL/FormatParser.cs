@@ -44,11 +44,11 @@ namespace YoutubeDL
     {
         public static IList<IFormat> SelectFormats(IList<IFormat> formats, string format_spec, string mergeOutputFormat = null)
         {
-            var selector = BuildFormatSelector(formats, format_spec, mergeOutputFormat);
+            var selector = BuildFormatSelector(format_spec, mergeOutputFormat);
             return selector(formats);
         }
 
-        public static Func<IList<IFormat>, IList<IFormat>> BuildFormatSelector(IList<IFormat> formats, string format_spec, string mergeOutputFormat = null)
+        public static Func<IList<IFormat>, IList<IFormat>> BuildFormatSelector(string format_spec, string mergeOutputFormat = null)
         {
             var tokens = Regex.Split(format_spec, @"(?=[/+,()\[\]])|(?<=[/+,()\[\]])");
             var index = -1;
