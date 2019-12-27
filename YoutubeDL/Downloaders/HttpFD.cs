@@ -10,7 +10,7 @@ using YoutubeDL.Models;
 
 namespace YoutubeDL.Downloaders
 {
-    class HttpFD : FileDownloader
+    public class HttpFD : FileDownloader
     {
         public override string[] Protocols => new string[] { "http", "https", "ftp" };
         public bool DoubleBufferCopy { get; set; } = false;
