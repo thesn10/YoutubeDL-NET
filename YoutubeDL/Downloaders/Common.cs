@@ -10,9 +10,9 @@ namespace YoutubeDL.Downloaders
 {
     public interface IFileDownloader : IHasLog, IHasProgress
     {
-        public string[] Protocols { get; }
-        public void Download(IDownloadable format, string filename, bool overwrite = true);
-        public Task DownloadAsync(IDownloadable format, string filename, bool overwrite = true);
+        string[] Protocols { get; }
+        void Download(IDownloadable format, string filename, bool overwrite = true);
+        Task DownloadAsync(IDownloadable format, string filename, bool overwrite = true);
     }
 
     public abstract class FileDownloader : IFileDownloader

@@ -161,7 +161,7 @@ namespace YoutubeDL
                 {"yottabytes", (int)Math.Pow(1000,8)},
                 {"yobibytes", (int)Math.Pow(1024,8)},
             };
-            string units_re = string.Join('|', _UNIT_TABLE.Keys.Select(x => Regex.Escape(x)));
+            string units_re = string.Join("|", _UNIT_TABLE.Keys.Select(x => Regex.Escape(x)));
             Match m = Regex.Match(string.Format(@"(?P<num>[0-9]+(?:[,.][0-9]*)?)\s*(?P<unit>%s)\b", units_re), s);
             if (!m.Success) return null;
             string num_str = m.Groups["num"].Value.Replace(',', '.');

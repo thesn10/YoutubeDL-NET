@@ -68,60 +68,64 @@ namespace YoutubeDL.Postprocessors
 
         public void Execute(string[] args)
         {
-            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(' ', args))
+            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(" ", args))
             {
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
 
-            using Process p = new Process
+            using (Process p = new Process
             {
                 EnableRaisingEvents = true,
                 StartInfo = i
-            };
-
-            if (TrackProgress)
+            })
             {
-                FFMpegProgressData data = new FFMpegProgressData();
-                p.ErrorDataReceived += (sender, e) => OnFFMpegOutput((Process)sender, e, ref data);
-            }
-            p.Start();
-            if (TrackProgress) p.BeginErrorReadLine();
-            p.WaitForExit();
 
-            if (p.ExitCode != 0)
-            {
-                throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                if (TrackProgress)
+                {
+                    FFMpegProgressData data = new FFMpegProgressData();
+                    p.ErrorDataReceived += (sender, e) => OnFFMpegOutput((Process)sender, e, ref data);
+                }
+                p.Start();
+                if (TrackProgress) p.BeginErrorReadLine();
+                p.WaitForExit();
+
+                if (p.ExitCode != 0)
+                {
+                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                }
             }
         }
 
         public async Task ExecuteAsync(string[] args, CancellationToken token = default)
         {
-            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(' ', args))
+            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(" ", args))
             {
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
 
-            using Process p = new Process
+            using (Process p = new Process
             {
                 EnableRaisingEvents = true,
                 StartInfo = i
-            };
-
-            if (TrackProgress)
+            })
             {
-                FFMpegProgressData data = new FFMpegProgressData();
-                p.ErrorDataReceived += (sender, e) => OnFFMpegOutput((Process)sender, e, ref data);
-            }
-            p.Start();
-            if (TrackProgress) p.BeginErrorReadLine();
 
-            if (await p.WaitForExitAsync(token).ConfigureAwait(false) != 0)
-            {
-                throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                if (TrackProgress)
+                {
+                    FFMpegProgressData data = new FFMpegProgressData();
+                    p.ErrorDataReceived += (sender, e) => OnFFMpegOutput((Process)sender, e, ref data);
+                }
+                p.Start();
+                if (TrackProgress) p.BeginErrorReadLine();
+
+                if (await p.WaitForExitAsync(token).ConfigureAwait(false) != 0)
+                {
+                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                }
             }
         }
 
@@ -148,27 +152,29 @@ namespace YoutubeDL.Postprocessors
 
         public StreamReader ExecuteProbe(string[] args)
         {
-            ProcessStartInfo i = new ProcessStartInfo(ProbeFilename, string.Join(' ', args))
+            ProcessStartInfo i = new ProcessStartInfo(ProbeFilename, string.Join(" ", args))
             {
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
 
-            using Process p = new Process
+            using (Process p = new Process
             {
                 StartInfo = i
-            };
-            p.Start();
-            p.WaitForExit();
-
-            if (p.ExitCode != 0)
+            })
             {
-                //Debug.WriteLine("Error:" + p.StandardError.ReadToEnd());
-                throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
-            }
+                p.Start();
+                p.WaitForExit();
 
-            return p.StandardError;
+                if (p.ExitCode != 0)
+                {
+                    //Debug.WriteLine("Error:" + p.StandardError.ReadToEnd());
+                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                }
+
+                return p.StandardError;
+            }
         }
 
         public async Task<string> GetAudioCodec(string path)

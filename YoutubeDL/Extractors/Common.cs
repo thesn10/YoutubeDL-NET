@@ -16,14 +16,14 @@ namespace YoutubeDL.Extractors
 {
     public interface IInfoExtractor : IHasLog
     {
-        public string Name { get; }
-        public string Description { get; }
-        public bool Working { get; }
+        string Name { get; }
+        string Description { get; }
+        bool Working { get; }
         // IE Key
-        public bool Suitable(string url);
-        public InfoDict Extract(string url);
-        public Task<InfoDict> ExtractAsync(string url);
-        public void Initialize();
+        bool Suitable(string url);
+        InfoDict Extract(string url);
+        Task<InfoDict> ExtractAsync(string url);
+        void Initialize();
     }
 
     /// <summary>

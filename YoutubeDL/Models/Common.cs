@@ -60,19 +60,28 @@ namespace YoutubeDL.Models
         {
             if (type == null)
                 type = (string)infoDict.GetValueOrDefault("_type");
+
             if (infoDict.ContainsKey("_type")) infoDict.Remove("_type");
 
-            return type switch
+            switch (type)
             {
-                "video" => new Video(infoDict),
-                "playlist" => new Playlist(infoDict),
-                "url" => new ContentUrl(infoDict),
-                "url-transparent" => new TransparentUrl(infoDict),
-                "format" => FormatBase.FromDict(infoDict),
-                "thumbnail" => new Thumbnail(infoDict),
-                "subtitleformat" => new SubtitleFormat(infoDict),
-                _ => new InfoDict(infoDict),
-            };
+                case "video":
+                    return new Video(infoDict);
+                case "playlist":
+                    return new Playlist(infoDict);
+                case "url":
+                    return new ContentUrl(infoDict);
+                case "url-transparent":
+                    return new TransparentUrl(infoDict);
+                case "format":
+                    return FormatBase.FromDict(infoDict);
+                case "thumbnail":
+                    return new Thumbnail(infoDict);
+                case "subtitleformat":
+                    return new SubtitleFormat(infoDict);
+                default:
+                    return new InfoDict(infoDict);
+            }
         }
 
         public void AddExtraInfo(Dictionary<string, object> extraInfo, bool overwrite = true)
@@ -128,10 +137,10 @@ namespace YoutubeDL.Models
 
     public interface IDownloadable
     {
-        public bool IsDownloaded { get; set; }
-        public string FileName { get; set; }
-        public string Url { get; set; }
-        public Dictionary<string, string> HttpHeaders { get; set; }
-        public Dictionary<string, object> DownloaderOptions { get; set; }
+        bool IsDownloaded { get; set; }
+        string FileName { get; set; }
+        string Url { get; set; }
+        Dictionary<string, string> HttpHeaders { get; set; }
+        Dictionary<string, object> DownloaderOptions { get; set; }
     }
 }

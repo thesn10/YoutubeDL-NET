@@ -10,34 +10,34 @@ namespace YoutubeDL.Models
 {
     public interface IFormat : IDownloadable
     {
-        public string Name { get; set; }
-        public string Id { get; set; }
-        public string Extension { get; set; }
-        public string Note { get; set; }
-        public string Quality { get; set; }
-        public string Protocol { get; set; }
+        string Name { get; set; }
+        string Id { get; set; }
+        string Extension { get; set; }
+        string Note { get; set; }
+        string Quality { get; set; }
+        string Protocol { get; set; }
     }
 
     public interface IAudioFormat : IFormat
     {
-        public string AudioCodec { get; set; }
-        public int AudioBitrate { get; set; }
-        public int AudioSampleRate { get; set; }
+        string AudioCodec { get; set; }
+        int AudioBitrate { get; set; }
+        int AudioSampleRate { get; set; }
     }
 
     public interface IVideoFormat : IFormat
     {
-        public string VideoCodec { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
-        public double FPS { get; set; }
-        public int VideoBitrate { get; set; }
-        public int? StretchedRatio { get; set; }
+        string VideoCodec { get; set; }
+        int Width { get; set; }
+        int Height { get; set; }
+        double FPS { get; set; }
+        int VideoBitrate { get; set; }
+        int? StretchedRatio { get; set; }
     }
 
     public interface IMuxedFormat : IAudioFormat, IVideoFormat
     {
-        public float TotalBitrate { get; set; }
+        float TotalBitrate { get; set; }
     }
 
     public abstract class FormatBase : InfoDict, IFormat

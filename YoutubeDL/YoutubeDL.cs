@@ -206,7 +206,7 @@ namespace YoutubeDL
 
         public Type GetInfoExtractorType(string name)
         {
-            Type ex = ie_types.FirstOrDefault(type => type.Name[0..^2] == name);
+            Type ex = ie_types.FirstOrDefault(type => type.Name.Substring(0, type.Name.Length - 2) == name);
             if (ex == default) return null;
             return ex;
         }
@@ -251,7 +251,7 @@ namespace YoutubeDL
                 //var m_suitable = ie.GetMethod("Suitable", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy);
                 //Match match = (Match)m_suitable.Invoke(null, new object[] { url });
 
-                IInfoExtractor extractor = GetInfoExtractorInstance(ie.Name[0..^2]);
+                IInfoExtractor extractor = GetInfoExtractorInstance(ie.Name.Substring(0, ie.Name.Length - 2));
                 if (!extractor.Suitable(url)) continue;
 
                 //var m_working = ie.GetProperty("Working", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy);
@@ -902,10 +902,13 @@ namespace YoutubeDL
             FileMode fm = Options.NoOverwrites ? FileMode.CreateNew : FileMode.Create;
             try
             {
-                using FileStream f = File.Open(filename, fm, FileAccess.Write);
-                using StreamWriter w = new StreamWriter(f);
-
-                await w.WriteAsync(video.Description);
+                using (FileStream f = File.Open(filename, fm, FileAccess.Write))
+                {
+                    using (StreamWriter w = new StreamWriter(f))
+                    {
+                        await w.WriteAsync(video.Description);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -930,10 +933,13 @@ namespace YoutubeDL
             FileMode fm = Options.NoOverwrites ? FileMode.CreateNew : FileMode.Create;
             try
             {
-                using FileStream f = File.Open(filename, fm, FileAccess.Write);
-                using StreamWriter w = new StreamWriter(f);
-
-                await w.WriteAsync(video.Annotations);
+                using (FileStream f = File.Open(filename, fm, FileAccess.Write))
+                {
+                    using (StreamWriter w = new StreamWriter(f))
+                    {
+                        await w.WriteAsync(video.Annotations);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -952,11 +958,14 @@ namespace YoutubeDL
             FileMode fm = Options.NoOverwrites ? FileMode.CreateNew : FileMode.Create;
             try
             {
-                using FileStream f = File.Open(filename, fm, FileAccess.Write);
-                using StreamWriter w = new StreamWriter(f);
-
-                string json = JsonSerializer.Serialize(video, video.GetType());
-                await w.WriteAsync(json);
+                using (FileStream f = File.Open(filename, fm, FileAccess.Write))
+                {
+                    using (StreamWriter w = new StreamWriter(f))
+                    {
+                        string json = JsonSerializer.Serialize(video, video.GetType());
+                        await w.WriteAsync(json);
+                    }
+                }
             }
             catch (Exception ex)
             {

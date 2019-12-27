@@ -7,7 +7,7 @@ namespace YoutubeDL
 {
     public interface IHasProgress
     {
-        public event ProgressEventHandler OnProgress;
+        event ProgressEventHandler OnProgress;
     }
 
     public class ProgressEventArgs : EventArgs

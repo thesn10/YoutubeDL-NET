@@ -196,30 +196,52 @@ namespace YoutubeDL.Python
             string readstream = string.Empty;
             if (File.Exists(cachepath))
             {
-                using var sr = new StreamReader(cachepath);
-                readstream = sr.ReadToEnd();
-            }
-            using var writestream = File.Open(cachepath, FileMode.Create, FileAccess.Write);
-            using var writer = new Utf8JsonWriter(writestream, new JsonWriterOptions { Indented = true });
-
-            writer.WriteStartObject();
-            bool sectionWritten = false;
-            try
-            {
-                using var reader = JsonDocument.Parse(readstream);
-
-                foreach (var elem in reader.RootElement.EnumerateObject())
+                using (var sr = new StreamReader(cachepath))
                 {
-                    if (elem.Name == section)
+                    readstream = sr.ReadToEnd();
+                }
+            }
+            using (var writestream = File.Open(cachepath, FileMode.Create, FileAccess.Write))
+            {
+                using (var writer = new Utf8JsonWriter(writestream, new JsonWriterOptions { Indented = true }))
+                {
+                    writer.WriteStartObject();
+                    bool sectionWritten = false;
+                    try
                     {
-                        writer.WriteStartObject(section);
-                        foreach (var kElem in elem.Value.EnumerateObject())
+                        using (var reader = JsonDocument.Parse(readstream))
                         {
-                            if (kElem.Name != key)
+                            foreach (var elem in reader.RootElement.EnumerateObject())
                             {
-                                kElem.WriteTo(writer);
+                                if (elem.Name == section)
+                                {
+                                    writer.WriteStartObject(section);
+                                    foreach (var kElem in elem.Value.EnumerateObject())
+                                    {
+                                        if (kElem.Name != key)
+                                        {
+                                            kElem.WriteTo(writer);
+                                        }
+                                    }
+                                    writer.WriteStartObject(key);
+                                    writer.WriteString("type", obj.GetType().FullName);
+                                    writer.WritePropertyName("value");
+                                    JsonSerializer.Serialize(writer, obj, obj.GetType());
+                                    writer.WriteEndObject();
+                                    writer.WriteEndObject();
+                                    sectionWritten = true;
+                                }
+                                else
+                                {
+                                    elem.WriteTo(writer);
+                                }
                             }
                         }
+                    }
+                    catch { }
+                    if (!sectionWritten)
+                    {
+                        writer.WriteStartObject(section);
                         writer.WriteStartObject(key);
                         writer.WriteString("type", obj.GetType().FullName);
                         writer.WritePropertyName("value");
@@ -228,26 +250,10 @@ namespace YoutubeDL.Python
                         writer.WriteEndObject();
                         sectionWritten = true;
                     }
-                    else
-                    {
-                        elem.WriteTo(writer);
-                    }
+
+                    writer.WriteEndObject();
                 }
             }
-            catch { }
-            if (!sectionWritten)
-            {
-                writer.WriteStartObject(section);
-                writer.WriteStartObject(key);
-                writer.WriteString("type", obj.GetType().FullName);
-                writer.WritePropertyName("value");
-                JsonSerializer.Serialize(writer, obj, obj.GetType());
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-                sectionWritten = true;
-            }
-
-            writer.WriteEndObject();
         }
 
         public PyObject CacheLoad(string section, string key, PyObject def = null)
@@ -258,25 +264,28 @@ namespace YoutubeDL.Python
 
             if (!File.Exists(cachepath)) return def;
 
-            using var stream = File.OpenRead(cachepath);
-            using var reader = JsonDocument.Parse(stream);
-
-            var bytes = new byte[stream.Length];
-            stream.Read(bytes, 0, bytes.Length);
-            var xreader = new Utf8JsonReader(bytes);
-
-            if (reader.RootElement.TryGetProperty(section, out var sectElem))
+            using (var stream = File.OpenRead(cachepath))
             {
-                if (sectElem.TryGetProperty(key, out var keyElem))
+                using (var reader = JsonDocument.Parse(stream))
                 {
-                    var type = Type.GetType(keyElem.GetProperty("type").GetString());
-                    var value = keyElem.GetProperty("value").GetRawText();
-                    object managed = JsonSerializer.Deserialize(value, type);
-                    return PythonCompat.ManagedObjectToPython(managed, type);
+                    var bytes = new byte[stream.Length];
+                    stream.Read(bytes, 0, bytes.Length);
+                    var xreader = new Utf8JsonReader(bytes);
+
+                    if (reader.RootElement.TryGetProperty(section, out var sectElem))
+                    {
+                        if (sectElem.TryGetProperty(key, out var keyElem))
+                        {
+                            var type = Type.GetType(keyElem.GetProperty("type").GetString());
+                            var value = keyElem.GetProperty("value").GetRawText();
+                            object managed = JsonSerializer.Deserialize(value, type);
+                            return PythonCompat.ManagedObjectToPython(managed, type);
+                        }
+                    }
+                    //Debug.WriteLine("def");
+                    return def;
                 }
             }
-            //Debug.WriteLine("def");
-            return def;
         }
 
         public void ToScreen(string message, bool skip_eol = false)

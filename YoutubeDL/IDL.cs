@@ -10,8 +10,8 @@ namespace YoutubeDL
     /// </summary>
     public interface IManagingDL
     {
-        public YoutubeDLOptions Options { get; set; }
-        public HttpClient HttpClient { get; }
+        YoutubeDLOptions Options { get; set; }
+        HttpClient HttpClient { get; }
     }
 
     interface IDLOptions

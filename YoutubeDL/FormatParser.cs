@@ -86,7 +86,7 @@ namespace YoutubeDL
             };
 
             string operator_rex =
-                @"(?x)\s*(?P<key>width|height|tbr|abr|vbr|asr|filesize|filesize_approx|fps)\s*(?P<op>" + string.Join('|', operators.Keys.Select(x => Regex.Escape(x))) +
+                @"(?x)\s*(?P<key>width|height|tbr|abr|vbr|asr|filesize|filesize_approx|fps)\s*(?P<op>" + string.Join("|", operators.Keys.Select(x => Regex.Escape(x))) +
                 @")(?P<none_inclusive>\s*\?)?\s*(?P<value>[0-9.]+(?:[kKmMgGtTpPeEzZyY]i?[Bb]?)?)$";
 
             object comp_val = null;
@@ -121,7 +121,7 @@ namespace YoutubeDL
 
                 string strOperator_rex = @"(?x)
                     \s*(?P<key>ext|acodec|vcodec|container|protocol|format_id)
-                    \s*(?P<negation>!\s*)?(?P<op>" + string.Join('|', strOperators.Keys.Select(x => Regex.Escape(x))) +
+                    \s*(?P<negation>!\s*)?(?P<op>" + string.Join("|", strOperators.Keys.Select(x => Regex.Escape(x))) +
                     @")(?P<none_inclusive>\s*\?)?
                     \s*(?P<value>[a-zA-Z0-9._-]+)
                     \s*$";

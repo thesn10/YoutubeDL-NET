@@ -5,7 +5,7 @@ namespace YoutubeDL
 {
     public interface IHasLog
     {
-        public event LogEventHandler OnLog;
+        event LogEventHandler OnLog;
     }
 
     public enum LogType
@@ -50,7 +50,7 @@ namespace YoutubeDL
             if (ytdlpy)
             {
                 List<string> senders = sender == null ? new List<string>() : new List<string>(sender);
-                while (message.StartsWith('['))
+                while (message.StartsWith("["))
                 {
                     int bracketindex = message.IndexOf(']');
                     senders.Add(message.Substring(1, bracketindex - 1));

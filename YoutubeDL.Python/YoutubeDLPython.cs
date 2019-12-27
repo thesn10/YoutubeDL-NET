@@ -35,21 +35,22 @@ namespace YoutubeDL.Python
             HttpClientHandler handler = new HttpClientHandler();
             handler.AllowAutoRedirect = false;
 
-            using HttpClient client = new HttpClient(handler);
+            using (HttpClient client = new HttpClient(handler))
+            {
+                var resp = await client.GetAsync("https://youtube-dl.org/downloads/latest/");
+                string version = resp.Headers.Location.Segments.Last().Replace("/", "").Trim();
 
-            var resp = await client.GetAsync("https://youtube-dl.org/downloads/latest/");
-            string version = resp.Headers.Location.Segments.Last().Replace("/", "").Trim();
+                string repoUrl = $"https://github.com/ytdl-org/youtube-dl/archive/{version}.zip";
+                HttpFD httpfd = new HttpFD();
+                httpfd.OnProgress += (sender, e) => ytdl.ProgressBar(sender, e, "youtube_dl-" + version, "Downloading");
+                await httpfd.SingleThreadedDownload(repoUrl, baseDir + "/youtube_dl.zip");
+                ytdl.LogInfo($"Extracting youtube_dl-{version}");
 
-            string repoUrl = $"https://github.com/ytdl-org/youtube-dl/archive/{version}.zip";
-            HttpFD httpfd = new HttpFD();
-            httpfd.OnProgress += (sender, e) => ytdl.ProgressBar(sender, e, "youtube_dl-" + version, "Downloading");
-            await httpfd.SingleThreadedDownload(repoUrl, baseDir + "/youtube_dl.zip");
-            ytdl.LogInfo($"Extracting youtube_dl-{version}");
-
-            ZipFile.ExtractToDirectory(baseDir + "/youtube_dl.zip", baseDir);
-            File.Delete(baseDir + "/youtube_dl.zip");
-            Directory.Move(baseDir + $"/youtube-dl-{version}/youtube_dl", baseDir + "/youtube_dl");
-            Directory.Delete(baseDir + $"/youtube-dl-{version}", true);
+                ZipFile.ExtractToDirectory(baseDir + "/youtube_dl.zip", baseDir);
+                File.Delete(baseDir + "/youtube_dl.zip");
+                Directory.Move(baseDir + $"/youtube-dl-{version}/youtube_dl", baseDir + "/youtube_dl");
+                Directory.Delete(baseDir + $"/youtube-dl-{version}", true);
+            }
         }
 
         public static void InitPython(this YouTubeDL dl)
@@ -216,8 +217,6 @@ namespace YoutubeDL.Python
                         ytdl.LogError("Max downloads reached");
                         throw e;
                     }
-                    state.Dispose();
-                    return null;
                 }
 
                 state.Dispose();

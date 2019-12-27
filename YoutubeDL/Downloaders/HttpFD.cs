@@ -72,53 +72,55 @@ namespace YoutubeDL.Downloaders
             else
                 chunksize = DefaultChunkSize;
 
-            using FileStream f = File.OpenWrite(filename);
-            while (true)
+            using (FileStream f = File.OpenWrite(filename))
             {
-                HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, url);
-
-                if (headers != null)
-                    foreach (var h in headers)
-                        message.Headers.Add(h.Key, h.Value);
-
-                message.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(current, current + chunksize - 1);
-
-                var resp = await HttpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
-
-                if (resp.Headers.TransferEncodingChunked.HasValue &&
-                    resp.Headers.TransferEncodingChunked.Value)
+                while (true)
                 {
-                    f.Seek(0, SeekOrigin.Begin);
+                    HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, url);
+
+                    if (headers != null)
+                        foreach (var h in headers)
+                            message.Headers.Add(h.Key, h.Value);
+
+                    message.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(current, current + chunksize - 1);
+
+                    var resp = await HttpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
+
+                    if (resp.Headers.TransferEncodingChunked.HasValue &&
+                        resp.Headers.TransferEncodingChunked.Value)
+                    {
+                        f.Seek(0, SeekOrigin.Begin);
+                        using (Stream s = await resp.Content.ReadAsStreamAsync())
+                        {
+                            if (DoubleBufferCopy) //await s.DoubleBufferCopyToAsync(f, DefaultBufferSize);
+                                await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, si) => RaiseProgress(rec, -1));
+                            else //await s.CopyToAsync(f, DefaultBufferSize);
+                                await s.CopyToAsync(f, DefaultBufferSize, (rec, si) => RaiseProgress(rec, -1));
+                        }
+                        RaiseProgress(f.Length, f.Length);
+                        break;
+                    }
+
+                    GetContentRange(resp, out long from, out long to, out long total);
+                    f.Seek((int)from, SeekOrigin.Begin);
+
                     using (Stream s = await resp.Content.ReadAsStreamAsync())
                     {
                         if (DoubleBufferCopy) //await s.DoubleBufferCopyToAsync(f, DefaultBufferSize);
-                            await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, s) => RaiseProgress(rec, -1));
+                            await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, si) => RaiseProgress(rec, total));
                         else //await s.CopyToAsync(f, DefaultBufferSize);
-                            await s.CopyToAsync(f, DefaultBufferSize, (rec, s) => RaiseProgress(rec, -1));
+                            await s.CopyToAsync(f, DefaultBufferSize, (rec, si) => RaiseProgress(rec, total));
                     }
-                    RaiseProgress(f.Length, f.Length);
-                    break;
+
+                    //RaiseProgress(to + 1, total);
+
+                    if (f.Length < total)
+                    {
+                        current = f.Length - 1;
+                        continue;
+                    }
+                    else break;
                 }
-
-                GetContentRange(resp, out long from, out long to, out long total);
-                f.Seek((int)from, SeekOrigin.Begin);
-
-                using (Stream s = await resp.Content.ReadAsStreamAsync())
-                {
-                    if (DoubleBufferCopy) //await s.DoubleBufferCopyToAsync(f, DefaultBufferSize);
-                        await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, s) => RaiseProgress(rec, total));
-                    else //await s.CopyToAsync(f, DefaultBufferSize);
-                        await s.CopyToAsync(f, DefaultBufferSize, (rec, s) => RaiseProgress(rec, total));
-                }
-
-                //RaiseProgress(to + 1, total);
-
-                if (f.Length < total)
-                {
-                    current = f.Length - 1;
-                    continue;
-                }
-                else break;
             }
         }
 
@@ -206,9 +208,9 @@ namespace YoutubeDL.Downloaders
                 using (Stream s = await resp.Content.ReadAsStreamAsync())
                 {
                     if (DoubleBufferCopy)
-                        await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, s) => onProgress(rec, -1));
+                        await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, (rec, si) => onProgress(rec, -1));
                     else
-                        await s.CopyToAsync(f, DefaultBufferSize, (rec, s) => onProgress(rec, -1));
+                        await s.CopyToAsync(f, DefaultBufferSize, (rec, si) => onProgress(rec, -1));
                 }
                 onProgress(f.Length, (int)f.Length);
                 return f.Length;
@@ -217,21 +219,25 @@ namespace YoutubeDL.Downloaders
             {
                 GetContentRange(resp, out long from, out long to, out long total);
 
-                using Stream s = await resp.Content.ReadAsStreamAsync();
-                f.Seek(from, SeekOrigin.Begin);
+                using (Stream s = await resp.Content.ReadAsStreamAsync())
+                {
+                    f.Seek(from, SeekOrigin.Begin);
 
-                if (DoubleBufferCopy)
-                    await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, onProgress);
-                else
-                    await s.CopyToAsync(f, DefaultBufferSize, onProgress);
-                return to;
+                    if (DoubleBufferCopy)
+                        await s.DoubleBufferCopyToAsync(f, DefaultBufferSize, onProgress);
+                    else
+                        await s.CopyToAsync(f, DefaultBufferSize, onProgress);
+                    return to;
+                }
             }
         }
 
         protected async Task ContentToFileAsync(string filename, HttpRequestMessage message, Action<long, int> onProgress = null)
         {
-            using FileStream f = File.Open(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
-            await ContentToStreamAsync(f, message, onProgress);
+            using (FileStream f = File.Open(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write))
+            {
+                await ContentToStreamAsync(f, message, onProgress);
+            }
         }
     }
 }
