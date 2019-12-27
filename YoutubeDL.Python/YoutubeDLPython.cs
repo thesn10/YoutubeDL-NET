@@ -225,6 +225,63 @@ namespace YoutubeDL.Python
             }
         }
 
+        public static async Task<string> PyGetId(this YouTubeDL ytdl, string url)
+        {
+            // EXPERIMENTAL CODE
+            await CheckDownloadYTDLPython(ytdl);
+
+            Py.GILState state;
+            try
+            {
+                InitPython(ytdl);
+                state = Py.GIL();
+            }
+            catch
+            {
+                ytdl.LogError("Python is not installed!");
+                throw new InvalidOperationException("Python is not installed!");
+            }
+
+            if (PyScope == null)
+                PyScope = Py.CreateScope("extractorscope");
+
+            if (ytdl.Options.LazyLoad)
+            {
+                dynamic re = PyScope.Import("re");
+                dynamic sys = PyScope.Import("sys");
+                sys.path.insert(0, AppDomain.CurrentDomain.BaseDirectory);
+                ytdl.LogDebug("Loading python extractors");
+                LazyExtractors.LoadLazyExtractors();
+                foreach (var r in LazyExtractors.Extractors)
+                {
+                    dynamic match = re.match(r.Value.Item1, url);
+                    if (match == null) continue;
+                    state.Dispose();
+                    return (string)match.group("id");
+                }
+                state.Dispose();
+                return null;
+            }
+            else
+            {
+                dynamic os = PyScope.Import("os");
+                os.chdir(AppDomain.CurrentDomain.BaseDirectory);
+
+                ytdl.LogDebug("Importing extractors (slow)");
+                dynamic ytdl_extactor = PyScope.Import("youtube_dl.extractor");
+
+                dynamic extractors = ytdl_extactor.gen_extractor_classes();
+                foreach (dynamic ie in extractors)
+                {
+                    if (!ie.suitable(url)) continue;
+                    state.Dispose();
+                    return (string)ie._match_id(url);
+                }
+                state.Dispose();
+                return null;
+            }
+        }
+
         public static void AddDefaultExtraInfo(this YouTubeDL ytdl, InfoDict infoDict, dynamic python_ie, string url)
         {
             string abspath = url;
