@@ -59,7 +59,7 @@ namespace YoutubeDL.Downloaders
         }
 
         public async Task SingleThreadedDownload(IDownloadable format, string filename)
-            => await SingleThreadedDownload(format.Url, filename, format.HttpHeaders, (int)format.DownloaderOptions.GetValueOrDefault("http_chunk_size"));
+            => await SingleThreadedDownload(format.Url, filename, format.HttpHeaders, format.DownloaderOptions == null ? null : (int?)format.DownloaderOptions.GetValueOrDefault("http_chunk_size"));
 
         public async Task SingleThreadedDownload(string url, string filename, Dictionary<string, string> headers = null, int? chunkSize = null)
         {
@@ -125,7 +125,7 @@ namespace YoutubeDL.Downloaders
         }
 
         public Task MultiThreadedDownload(IDownloadable format, string filename)
-            => MultiThreadedDownload(format.Url, filename, format.HttpHeaders, (int)format.DownloaderOptions.GetValueOrDefault("http_chunk_size"));
+            => MultiThreadedDownload(format.Url, filename, format.HttpHeaders, format.DownloaderOptions == null ? null : (int?)format.DownloaderOptions.GetValueOrDefault("http_chunk_size"));
 
         public async Task MultiThreadedDownload(string url, string filename, Dictionary<string,string> headers = null, int? chunkSize = null)
         {
