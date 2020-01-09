@@ -50,6 +50,7 @@ namespace YoutubeDL
     }
     class FFMpegException : Exception
     {
+        public string FFMpegStdError { get; set; }
         public FFMpegException() : base()
         {
         }
@@ -58,8 +59,9 @@ namespace YoutubeDL
         {
         }
 
-        public FFMpegException(string message, Exception innerException) : base(message, innerException)
+        public FFMpegException(string message, string stderr) : base(message)
         {
+            FFMpegStdError = stderr;
         }
     }
 }
