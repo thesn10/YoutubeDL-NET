@@ -25,10 +25,14 @@ namespace YoutubeDL.Python
     public static class YoutubeDLPython
     {
         private static PyScope PyScope;
-        internal static async Task CheckDownloadYTDLPython(this YouTubeDL ytdl)
+        public static async Task CheckDownloadYTDLPython(this YouTubeDL ytdl, bool force = false)
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            if (Directory.Exists(baseDir + "/youtube_dl")) return;
+            if (Directory.Exists(baseDir + "/youtube_dl")) 
+            {
+                if (!force) return;
+                Directory.Delete(baseDir + "/youtube_dl", true);
+            }
 
             ytdl.LogInfo("The python version of youtube_dl is required but not installed, downloading and installing youtube-dl...");
 
@@ -255,8 +259,9 @@ namespace YoutubeDL.Python
                 {
                     dynamic match = re.match(r.Value.Item1, url);
                     if (match == null) continue;
+                    string id = (string)match.group(2);
                     state.Dispose();
-                    return (string)match.group("id");
+                    return id;
                 }
                 state.Dispose();
                 return null;
