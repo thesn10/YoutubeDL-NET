@@ -124,6 +124,7 @@ namespace YoutubeDL.Postprocessors
 
                 if (await p.WaitForExitAsync(token).ConfigureAwait(false) != 0)
                 {
+                    //Debug.WriteLine("Error:" + p.StandardOutput.ReadToEnd());
                     throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
                 }
             }
@@ -150,7 +151,7 @@ namespace YoutubeDL.Postprocessors
         }
 
 
-        public StreamReader ExecuteProbe(string[] args)
+        public StreamReader ExecuteProbe(string[] args, bool stdout = false)
         {
             ProcessStartInfo i = new ProcessStartInfo(ProbeFilename, string.Join(" ", args))
             {
@@ -169,17 +170,53 @@ namespace YoutubeDL.Postprocessors
 
                 if (p.ExitCode != 0)
                 {
-                    //Debug.WriteLine("Error:" + p.StandardError.ReadToEnd());
-                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode);
+                    var stderr = p.StandardError.ReadToEnd();
+                    //Debug.WriteLine("Error:" + stderr);
+                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode, stderr);
                 }
 
-                return p.StandardError;
+                if (stdout)
+                {
+                    return p.StandardOutput;
+                }
+                else return p.StandardError;
+            }
+        }
+
+        public async Task<StreamReader> ExecuteProbeAsync(string[] args, bool stdout = false, CancellationToken token = default)
+        {
+            ProcessStartInfo i = new ProcessStartInfo(ProbeFilename, string.Join(" ", args))
+            {
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            using (Process p = new Process
+            {
+                StartInfo = i
+            })
+            {
+                p.Start();
+
+                if (await p.WaitForExitAsync(token).ConfigureAwait(false) != 0)
+                {
+                    var stderr = await p.StandardError.ReadToEndAsync();
+                    //Debug.WriteLine("Error:" + stderr);
+                    throw new FFMpegException("FFMpeg Error: Exited with error code " + p.ExitCode, stderr);
+                }
+
+                if (stdout)
+                {
+                    return p.StandardOutput;
+                }
+                else return p.StandardError;
             }
         }
 
         public async Task<string> GetAudioCodec(string path)
         {
-            var sr = ExecuteProbe(new string[] { "-show_streams", "\"file:" + path + "\"" });
+            var sr = await ExecuteProbeAsync(new string[] { "-show_streams", "\"file:" + path + "\"" });
             string codec = null;
             string line;
 
