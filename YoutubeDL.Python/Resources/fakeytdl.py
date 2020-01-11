@@ -54,6 +54,7 @@ class FakeYTDL(object):
         """ Start an HTTP download """
         if isinstance(req, str):
             req = compat_urllib_request.Request(req)
+        #self.cs_ytdl.ToScreen(str(req.__dict__))
         res = self.cs_ytdl.PythonUrlOpen(req).GetAwaiter().GetResult()
         rx = FakeResponse(res, self.cs_ytdl)
         if not res.IsSuccessStatusCode:
