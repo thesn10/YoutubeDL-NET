@@ -78,14 +78,18 @@ namespace YoutubeDL.Models
 
         public static FormatBase FromDict(Dictionary<string, object> infoDict)
         {
-            bool acodec = (string)infoDict["acodec"] != "none";
-            bool vcodec = (string)infoDict["vcodec"] != "none";
+            string sacodec = (string)infoDict.GetValueOrDefault("acodec");
+            string svcodec = (string)infoDict.GetValueOrDefault("vcodec");
+            bool acodec = sacodec != default && sacodec != "none";
+            bool vcodec = svcodec != default && svcodec != "none";
 
             if (acodec && vcodec) 
                 return new MuxedFormat(infoDict);
             else if (acodec) 
                 return new AudioFormat(infoDict);
-            else 
+            else if (vcodec)
+                return new VideoFormat(infoDict);
+            else
                 return new VideoFormat(infoDict);
         }
     }

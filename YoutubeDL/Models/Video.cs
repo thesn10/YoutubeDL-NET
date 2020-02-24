@@ -70,12 +70,24 @@ namespace YoutubeDL.Models
             if (infoDict.TryGetValue("thumbnails", out object thumbnails))
             {
                 var thumbnailList = new List<Thumbnail>();
-                List<Dictionary<string, object>> xthumbnails = (List<Dictionary<string, object>>)thumbnails;
-                foreach (Dictionary<string, object> thumbDict in xthumbnails)
+                if (thumbnails is List<Dictionary<string, object>> xthumbnails)
                 {
-                    thumbDict.Add("_type", "thumbnail");
-                    Thumbnail thumbInfoDict = InfoDict.FromDict<Thumbnail>(thumbDict);
-                    thumbnailList.Add(thumbInfoDict);
+                    foreach (Dictionary<string, object> thumbDict in xthumbnails)
+                    {
+                        thumbDict.Add("_type", "thumbnail");
+                        Thumbnail thumbInfoDict = InfoDict.FromDict<Thumbnail>(thumbDict);
+                        thumbnailList.Add(thumbInfoDict);
+                    }
+                }
+                else if (thumbnails is List<object> xthumbnails2)
+                {
+                    foreach (object thumbDict in xthumbnails2)
+                    {
+                        var td = (thumbDict as Dictionary<string, object>);
+                        td.Add("_type", "thumbnail");
+                        Thumbnail thumbInfoDict = InfoDict.FromDict<Thumbnail>(td);
+                        thumbnailList.Add(thumbInfoDict);
+                    }
                 }
                 thumbnailList.Sort();
                 for (int i = 0; i < thumbnailList.Count; i++)
@@ -102,12 +114,34 @@ namespace YoutubeDL.Models
 
             if (infoDict.TryGetValue("timestamp", out object timestamp))
             {
-                UploadDate = DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64((string)timestamp)).UtcDateTime;
+                if (timestamp is string s)
+                {
+                    UploadDate = DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64(s)).UtcDateTime;
+                }
+                else if (timestamp is int i)
+                {
+                    UploadDate = DateTimeOffset.FromUnixTimeSeconds(i).UtcDateTime;
+                }
+                else if (timestamp is long l)
+                {
+                    UploadDate = DateTimeOffset.FromUnixTimeSeconds(l).UtcDateTime;
+                }
             }
 
             if (infoDict.TryGetValue("duration", out object duration))
             {
-                Duration = TimeSpan.FromSeconds((int)duration);
+                if (timestamp is string s)
+                {
+                    Duration = TimeSpan.FromSeconds(Convert.ToInt32(s));
+                }
+                else if (duration is int i)
+                {
+                    Duration = TimeSpan.FromSeconds(i);
+                }
+                else if (duration is long l)
+                {
+                    Duration = TimeSpan.FromSeconds(l);
+                }
             }
 
             if (infoDict.TryGetValue("subtitles", out object subs))

@@ -13,9 +13,9 @@ namespace YoutubeDL.Models
         [YTDLMeta("preference")]
         public string Preference { get; set; }
         [YTDLMeta("width")]
-        public string Width { get; set; }
+        public int Width { get; set; }
         [YTDLMeta("height")]
-        public string Height { get; set; }
+        public int Height { get; set; }
         public Thumbnail() : base()
         {
 
@@ -30,19 +30,19 @@ namespace YoutubeDL.Models
             Thumbnail cmp = obj as Thumbnail;
             if (cmp == null) return 1;
 
-            if (Preference?.CompareTo(cmp.Preference) != 0)
+            if (Preference != null && Preference.CompareTo(cmp.Preference) != 0)
             {
                 return Preference.CompareTo(cmp.Preference);
             }
-            else if (Width?.CompareTo(cmp.Width) != 0)
+            else if (Width.CompareTo(cmp.Width) != 0)
             {
                 return Width.CompareTo(cmp.Width);
             }
-            else if (Height?.CompareTo(cmp.Height) != 0)
+            else if (Height.CompareTo(cmp.Height) != 0)
             {
                 return Height.CompareTo(cmp.Height);
             }
-            else if (Id?.CompareTo(cmp.Id) != 0)
+            else if (Id != null && Id.CompareTo(cmp.Id) != 0)
             {
                 return Id.CompareTo(cmp.Id);
             }
