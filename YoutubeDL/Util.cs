@@ -306,7 +306,7 @@ namespace YoutubeDL
     public static class StreamUtil
     {
         public static Task DoubleBufferCopyToAsync(this Stream source, Stream destination, Action<long, int> onProgress = null) 
-            => DoubleBufferCopyToAsync(source, destination, 10000, onProgress);
+            => DoubleBufferCopyToAsync(source, destination, 81920, onProgress);
 
         public static async Task DoubleBufferCopyToAsync(this Stream source, Stream destination, int bufferSize, Action<long, int> onProgress = null)
         {
@@ -338,12 +338,11 @@ namespace YoutubeDL
         }
 
         public static Task CopyToAsync(this Stream source, Stream destination, Action<long, int> onProgress = null)
-            => DoubleBufferCopyToAsync(source, destination, 10000, onProgress);
+            => DoubleBufferCopyToAsync(source, destination, 81920, onProgress);
 
         public static async Task CopyToAsync(this Stream source, Stream destination, int bufferSize, Action<long, int> onProgress = null)
         {
             byte[] buffer = new byte[bufferSize];
-            byte[] secondbuffer = new byte[bufferSize];
 
             int size;
             while ((size = await source.ReadAsync(buffer, 0, bufferSize)) > 0)
