@@ -193,7 +193,7 @@ namespace YoutubeDL.Extractors
         public abstract string Name { get; }
         public abstract string Description { get; }
         public abstract bool Working { get; }
-        public virtual Regex MatchRegex { get; }
+        protected virtual Regex MatchRegex { get; }
 
         public event LogEventHandler OnLog;
 
