@@ -40,10 +40,16 @@ namespace YoutubeDL.Python
     class PythonCompat
     {
 
-        [DllImport("python37", CallingConvention = CallingConvention.Cdecl)]
+#if MONO_LINUX || MONO_OSX // Linux/macOS use dotted version string
+        internal const string dllBase = "python3.7m";
+#else // Windows
+        internal const string dllBase = "python37";
+#endif
+
+        [DllImport(dllBase, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int PyObject_GetBuffer(IntPtr exporter, IntPtr view, int flags);
 
-        [DllImport("python37", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(dllBase, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void PyBuffer_Release(IntPtr view);
 
         public static void WriteToBuffer(PyObject obj, byte[] buffer)
