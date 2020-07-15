@@ -25,9 +25,10 @@ namespace YoutubeDL.Python
         }
 
         public PyObject GetOptions() => ytdl.Options.ToPyObj();
-        
+
         public async Task<HttpResponseMessage> PythonUrlOpen(PyObject pythonre)
         {
+            //Debug.WriteLine("PythonUrlOpen");
             string fullUrl;
             dynamic data;
             dynamic pheaders;
@@ -67,6 +68,7 @@ namespace YoutubeDL.Python
                     break;
             }
 
+            Dictionary<string, string> reqHeaders = new Dictionary<string, string>();
             using (Py.GIL())
             {
                 if (data != null)
@@ -92,16 +94,32 @@ namespace YoutubeDL.Python
                     Dictionary<string, object> headers = PythonCompat.PythonObjectToManaged(pheaders);
                     foreach (var header in headers)
                     {
+                        reqHeaders.Add(header.Key, (string)header.Value);
                         req.Headers.Add(header.Key, (string)header.Value);
                     }
                 }
             }
 
-            return await ytdl.HttpClient.SendAsync(req).ConfigureAwait(false);
+            req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36");
+            var resp = await ytdl.HttpClient.SendAsync(req).ConfigureAwait(false);
+
+            // follow redirects (https => http redirects are ignored by .net core)
+            while (resp.StatusCode == HttpStatusCode.Redirect)
+            {
+                HttpRequestMessage redirectReq = new HttpRequestMessage();
+                redirectReq.RequestUri = resp.Headers.Location;
+                redirectReq.Content = req.Content;
+                redirectReq.Method = req.Method;
+                foreach (var h in reqHeaders)
+                    redirectReq.Headers.Add(h.Key, h.Value);
+                resp = await ytdl.HttpClient.SendAsync(redirectReq).ConfigureAwait(false);
+            }
+            return resp;
         }
 
         public async Task<PyObject> PythonResponseToBytearray(HttpResponseMessage resp)
         {
+            //Debug.WriteLine("PythonResponseToBytearray");
             byte[] content = await resp.Content.ReadAsByteArrayAsync();
             using (Py.GIL())
             {
@@ -113,6 +131,7 @@ namespace YoutubeDL.Python
 
         public void SetCookie(PyObject pycookie)
         {
+            //Debug.WriteLine("SetCookie");
             using (Py.GIL())
             {
                 Cookie cookie = new Cookie();
@@ -129,7 +148,8 @@ namespace YoutubeDL.Python
                 if ((bool)dict.get("path_specified", false))
                     cookie.Path = (string)dict.get("path");
                 cookie.Secure = (bool)dict.get("secure");
-                cookie.Expires = DateTimeOffset.FromUnixTimeSeconds((long)dict.get("expires")).DateTime;
+                if (dict.get("expires") != null)
+                    cookie.Expires = DateTimeOffset.FromUnixTimeSeconds((long)dict.get("expires")).DateTime;
                 cookie.Discard = (bool)dict.get("discard");
                 ytdl.HttpClientHandler.CookieContainer.Add(cookie);
             }
@@ -137,6 +157,7 @@ namespace YoutubeDL.Python
 
         public string GetCookie(string url)
         {
+            //Debug.WriteLine("GetCookie");
             var cookies = ytdl.HttpClientHandler.CookieContainer.GetCookies(new Uri(url));
             string cookiestring = "";
             foreach (Cookie cookie in cookies)
