@@ -68,7 +68,9 @@ namespace YoutubeDL.Postprocessors
 
         public void Execute(string[] args)
         {
-            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(" ", args))
+            string args2 = string.Join(" ", args);
+            LogDebug("Final ffmpeg command args: " + args2);
+            ProcessStartInfo i = new ProcessStartInfo(Filename, args2)
             {
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -100,7 +102,9 @@ namespace YoutubeDL.Postprocessors
 
         public async Task ExecuteAsync(string[] args, CancellationToken token = default)
         {
-            ProcessStartInfo i = new ProcessStartInfo(Filename, string.Join(" ", args))
+            string args2 = string.Join(" ", args);
+            LogDebug("Final ffmpeg command args: " + args2);
+            ProcessStartInfo i = new ProcessStartInfo(Filename, args2)
             {
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -134,6 +138,7 @@ namespace YoutubeDL.Postprocessors
         {
             if (e.Data == null) return;
             //Debug.WriteLine("data: " + e.Data);
+            //LogDebug(e.Data);
             Match m = DurationR.Match(e.Data);
             if (m.Success)
             {
@@ -147,6 +152,10 @@ namespace YoutubeDL.Postprocessors
                 Util.TimeSpanLargeTryParse(t.Groups[1].Value, out TimeSpan time);
                 data.Time = time;
                 OnProgress?.Invoke(this, new ProgressEventArgs(time.Ticks, data.Duration.Ticks, "f", data.StartTime));
+            }
+            else if (!m.Success)
+            {
+                LogDebug(e.Data);
             }
         }
 
@@ -312,7 +321,7 @@ namespace YoutubeDL.Postprocessors
 
         public async Task ProcessAsync(CompFormat format, string filename, CancellationToken token = default)
         {
-            string[] args = new string[] { "-c", "copy", "-map", "0:v:0", "-map", "1:a:0" };
+            string[] args = new string[] { "-c", "copy", "-map", "0:v:0?", "-map", "1:a:0?" };
             if (!format.VideoFormat.IsDownloaded || !format.AudioFormat.IsDownloaded)
             {
                 string message = $"The format {format.Name} cant be merged because it is not downloaded";
