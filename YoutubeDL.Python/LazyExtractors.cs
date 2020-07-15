@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 using System.IO;
 using Python.Runtime;
+using YoutubeDL.Python.Extractors;
 
 namespace YoutubeDL
 {
@@ -34,25 +32,22 @@ namespace YoutubeDL
         private static void BuildLazyExtractors()
         {
             Extractors = new Dictionary<string, (string, string)>();
-            using (Py.GIL())
+            using (PythonExtractor.GILState(false))
             {
-                using (PyScope ps = Py.CreateScope())
+                dynamic sys = PythonExtractor.PythonScope.Import("sys");
+                sys.path.insert(0, AppDomain.CurrentDomain.BaseDirectory);
+                dynamic ext = PythonExtractor.PythonScope.Import("youtube_dl.extractor");
+                foreach (dynamic eclass in ext._ALL_CLASSES)
                 {
-                    dynamic sys = ps.Import("sys");
-                    sys.path.insert(0, AppDomain.CurrentDomain.BaseDirectory);
-                    dynamic ext = ps.Import("youtube_dl.extractor");
-                    foreach (dynamic eclass in ext._ALL_CLASSES)
+                    string name = (string)eclass.__name__;
+                    string module = (string)eclass.__module__;
+                    string validurl = (eclass as PyObject).GetAttr("_VALID_URL", null)?.ToString();
+                    if ((eclass as PyObject).HasAttr("_make_valid_url"))
                     {
-                        string name = (string)eclass.__name__;
-                        string module = (string)eclass.__module__;
-                        string validurl = (eclass as PyObject).GetAttr("_VALID_URL", null)?.ToString();
-                        if ((eclass as PyObject).HasAttr("_make_valid_url"))
-                        {
-                            validurl = eclass._make_valid_url();
-                        }
-
-                        Extractors.Add(name, (validurl, module));
+                        validurl = eclass._make_valid_url();
                     }
+
+                    Extractors.Add(name, (validurl, module));
                 }
             }
 

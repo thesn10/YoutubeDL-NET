@@ -26,19 +26,21 @@ namespace YoutubeDL
         public YouTubeDL()
         {
             Options = new YoutubeDLOptions();
-            ie_types = GetAllExtractors();
+            AddExtractors();
         }
         public YouTubeDL(YoutubeDLOptions settings)
         {
             Options = settings;
-            ie_types = GetAllExtractors();
+            AddExtractors();
         }
 
         public YoutubeDLOptions Options { get; set; }
         public int NumDownloads { get; private set; } = 0;
 
-        protected List<Type> ie_types;
-        protected readonly List<IInfoExtractor> ie_instances = new List<IInfoExtractor>();
+        public Func<CompFormat, IPostProcessor<CompFormat>> Merger { get; set; } = (f) => new FFMpegMergerPP(true);
+        public Func<IFormat, IPostProcessor> Converter { get; set; } = (f) => new FFMpegConverterPP("");
+
+        internal readonly List<IInfoExtractor> ie_instances = new List<IInfoExtractor>();
 
         protected HttpClient httpClient;
         private YTDL_HttpClientHandler httpClientHandler;
@@ -189,38 +191,65 @@ namespace YoutubeDL
         {
             httpClientHandler = new YTDL_HttpClientHandler
             {
-                CookieContainer = new CookieContainer()
+                CookieContainer = new CookieContainer(),
+                AllowAutoRedirect = true,
             };
             httpClient = new HttpClient(httpClientHandler, true);
         }
 
-        public static List<Type> GetAllExtractors()
+        public void AddExtractors()
+        {
+            foreach (var type in GetAllExtractorTypes())
+            {
+                var constructor = type.GetConstructor(new Type[] { typeof(YouTubeDL) });
+                if (constructor == null) continue;
+                var ie = (IInfoExtractor)constructor.Invoke(new object[] { this });
+                ie_instances.Add(ie);
+            }
+        }
+
+        public void AddExtractor<T>() where T : class, IInfoExtractor
+        {
+            var type = typeof(T);
+            var constructor = type.GetConstructor(new Type[] { typeof(YouTubeDL) });
+            if (constructor == null) throw new InvalidOperationException(nameof(T) + " has no valid constructor");
+            var ie = (IInfoExtractor)constructor.Invoke(new object[] { this });
+            ie_instances.Add(ie);
+        }
+
+        public void AddExtractor<T>(Func<T> instance) where T : IInfoExtractor
+        {
+            ie_instances.Add(instance());
+        }
+
+        public void RemoveAllExtractors()
+        {
+            foreach (var instance in ie_instances)
+            {
+                if (instance is IDisposable d)
+                {
+                    d.Dispose();
+                }
+            }
+            ie_instances.Clear();
+        }
+
+        public static List<Type> GetAllExtractorTypes()
         {
             Assembly asm = Assembly.GetExecutingAssembly();
             return asm.GetTypes()
-                .Where(type => 
-                    type.Namespace == "YoutubeDL.Extractors" && 
+                .Where(type =>
+                    type.Namespace == "YoutubeDL.Extractors" &&
                     type.Name.EndsWith("IE"))
                 .ToList();
         }
 
-        public Type GetInfoExtractorType(string name)
-        {
-            Type ex = ie_types.FirstOrDefault(type => type.Name.Substring(0, type.Name.Length - 2) == name);
-            if (ex == default) return null;
-            return ex;
-        }
-
         public IInfoExtractor GetInfoExtractorInstance(string name)
         {
-            var ie = ie_instances.FirstOrDefault(x => x.Name == name);
+            var ie = ie_instances.FirstOrDefault(x => x.Name == name || x.Name == name + "IE");
             if (ie == default) 
             {
-                var type = GetInfoExtractorType(name);
-                var constructor = type.GetConstructor(new Type[] { typeof(YouTubeDL) });
-                if (constructor == null) return null;
-                ie = (IInfoExtractor)constructor.Invoke(new object[] { this });
-                ie_instances.Add(ie);
+                return null;
             }
             return ie;
         }
@@ -235,27 +264,19 @@ namespace YoutubeDL
                 ie_key = "Generic";
             }
 
-            List<Type> ies;
+            List<IInfoExtractor> ies;
             if (ie_key != null)
             {
-                ies = new List<Type> { GetInfoExtractorType(ie_key) };
+                ies = new List<IInfoExtractor> { GetInfoExtractorInstance(ie_key) };
             }
             else
             {
-                ies = this.ie_types;
+                ies = this.ie_instances;
             }
 
-            foreach (Type ie in ies)
+            foreach (IInfoExtractor extractor in ies)
             {
-                //if (true) continue;
-                //var m_suitable = ie.GetMethod("Suitable", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy);
-                //Match match = (Match)m_suitable.Invoke(null, new object[] { url });
-
-                IInfoExtractor extractor = GetInfoExtractorInstance(ie.Name.Substring(0, ie.Name.Length - 2));
-                if (!extractor.Suitable(url)) continue;
-
-                //var m_working = ie.GetProperty("Working", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy);
-                //bool working = (bool)m_working.GetValue(null);
+                if (extractor == null || !extractor.Suitable(url)) continue;
 
                 if (!extractor.Working)
                 {
@@ -263,6 +284,7 @@ namespace YoutubeDL
                 }
 
                 extractor.OnLog += Log;
+                extractor.Initialize();
 
                 try
                 {
@@ -291,11 +313,13 @@ namespace YoutubeDL
                 return null;
             }
 
-            LogInfo("native extractors not suitable, switching to python");
+            return null;
+
+            //LogInfo("native extractors not suitable, switching to python");
 
             // no native extractor is suitable
             // now we try the python extractors
-
+            /*
             Assembly a = Assembly.Load(new AssemblyName("YoutubeDL.Python"));
             if (a == null) return null;
             var type = a.GetType("YoutubeDL.Python.YoutubeDLPython");
@@ -311,19 +335,43 @@ namespace YoutubeDL
             {
                 // python is not installed
                 return null;
-            }
+            }*/
+        }
+
+        /// <summary>
+        /// Returns the search results of the specified searchExtractor
+        /// </summary>
+        public Task<InfoDict> GetSearchResults(string search, int numberOfResults = 1, string searchExtractor = "ytsearch", 
+            bool download = true, string ie_key = null,
+            Dictionary<string, object> extra_info = null, bool process = true)
+        {
+            return ExtractInfoAsync($"{searchExtractor}{numberOfResults}:{search}", download, null, extra_info, process, false);
         }
 
         internal static void AddDefaultExtraInfo(InfoDict infoDict, IInfoExtractor ie, string url)
         {
-            var dict = new Dictionary<string, object>()
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri result))
             {
-                { "extractor", ie.GetType().Name },
-                { "extractor_key", ie.Name },
-                { "webpage_url", url },
-                { "webpage_url_basename", new Uri(url).AbsolutePath }
-            };
-            infoDict.AddExtraInfo(dict, false);
+                var dict = new Dictionary<string, object>()
+                {
+                    { "extractor", ie.GetType().Name },
+                    { "extractor_key", ie.Name },
+                    { "webpage_url", url },
+                    { "webpage_url_basename", result.AbsolutePath }
+                };
+                infoDict.AddExtraInfo(dict, false);
+            }
+            else
+            {
+                var dict = new Dictionary<string, object>()
+                {
+                    { "extractor", ie.GetType().Name },
+                    { "extractor_key", ie.Name },
+                    { "webpage_url", url },
+                    { "webpage_url_basename", url }
+                };
+                infoDict.AddExtraInfo(dict, false);
+            }
         }
 
         /// <summary>
@@ -417,7 +465,7 @@ namespace YoutubeDL
 
             if (download)
             {
-                await DownloadFormat(video, Options.Format, true).ConfigureAwait(false);
+                await Download(video, Options.Format, true).ConfigureAwait(false);
             }
             return video;
         }
@@ -482,7 +530,7 @@ namespace YoutubeDL
 
                     foreach (IFormat f in formats_to_download)
                     {
-                        formatTasks.Add(ProcessFormat(filename, f));
+                        formatTasks.Add(DownloadFormat(filename, f));
                     }
 
                     await Task.WhenAll(formatTasks).ConfigureAwait(false);
@@ -502,7 +550,7 @@ namespace YoutubeDL
             }
         }
 
-        public async Task ProcessFormat(string filename, IFormat format)
+        public async Task DownloadFormat(string filename, IFormat format, IProgress<double> progress = null)
         {
             string fname = PrepareFilename(format, filename);
             try
@@ -510,8 +558,9 @@ namespace YoutubeDL
                 // download
                 if (format is CompFormat cf)
                 {
-                    FFMpegMergerPP ff = new FFMpegMergerPP(Options.StrictMerge);
-                    if (!ff.Available)
+                    var ff = Merger(cf);
+                    //if (!ff.Available)
+                    if (ff == null)
                     {
                         LogWarning("ffmpeg or avconf is not installed, skipping " + cf.Id);
                         return;
@@ -520,7 +569,10 @@ namespace YoutubeDL
                     // we dont support merging yet, so just download both
                     string aname = PrepareFilename(cf.AudioFormat, filename);
                     FileDownloader l = FileDownloader.GetSuitableDownloader(cf.AudioFormat.Protocol);
-                    l.OnProgress += (sender, e) => ProgressBar(sender, e, cf.AudioFormat.Id, "Downloading");
+                    l.OnProgress += (sender, e) => {
+                        progress?.Report(e.Percent); 
+                        ProgressBar(sender, e, cf.AudioFormat.Id, "Downloading");
+                    };
                     Task atask = l.DownloadAsync(cf.AudioFormat, aname, true);
                     //downloadTasks.Add(dTask1);
                     cf.AudioFormat.FileName = aname;
@@ -528,7 +580,10 @@ namespace YoutubeDL
 
                     string vname = PrepareFilename(cf.VideoFormat, filename);
                     FileDownloader l2 = FileDownloader.GetSuitableDownloader(cf.VideoFormat.Protocol);
-                    l2.OnProgress += (sender, e) => ProgressBar(sender, e, cf.VideoFormat.Id, "Downloading");
+                    l2.OnProgress += (sender, e) => {
+                        progress?.Report(e.Percent); 
+                        ProgressBar(sender, e, cf.VideoFormat.Id, "Downloading");
+                    };
                     Task vtask = l2.DownloadAsync(cf.VideoFormat, vname, true);
                     //downloadTasks.Add(dTask2);
                     cf.VideoFormat.FileName = vname;
@@ -538,7 +593,10 @@ namespace YoutubeDL
                     await vtask;
 
                     ff.OnLog += Log;
-                    ff.OnProgress += (sender, e) => ProgressBar(sender, e, cf.Id, "Merging", ConsoleColor.Cyan);
+                    ff.OnProgress += (sender, e) => {
+                        progress?.Report(e.Percent);
+                        ProgressBar(sender, e, cf.Id, "Merging", ConsoleColor.Cyan);
+                    };
                     await ff.ProcessAsync(cf, fname);
                     LogDebug("Merged");
 
@@ -546,7 +604,10 @@ namespace YoutubeDL
                 else
                 {
                     FileDownloader l3 = FileDownloader.GetSuitableDownloader(format.Protocol);
-                    l3.OnProgress += (sender, e) => ProgressBar(sender, e, format.Id, "Downloading");
+                    l3.OnProgress += (sender, e) => { 
+                        progress?.Report(e.Percent);
+                        ProgressBar(sender, e, format.Id, "Downloading");
+                    };
                     Task dTask = l3.DownloadAsync(format, fname, true);
                     await dTask;
                     format.FileName = fname;
@@ -574,7 +635,11 @@ namespace YoutubeDL
                         LogWarning("Stretched Aspect Ratio detected");
                         FFMpegFixupAspectRatioPP pp = new FFMpegFixupAspectRatioPP();
                         pp.OnLog += Log;
-                        pp.OnProgress += (sender, e) => ProgressBar(sender, e, vf.Id, "Fixing Aspect Ratio", ConsoleColor.Magenta);
+                        pp.OnProgress += (sender, e) =>
+                        {
+                            progress?.Report(e.Percent);
+                            ProgressBar(sender, e, vf.Id, "Fixing Aspect Ratio", ConsoleColor.Magenta);
+                        };
                         await pp.ProcessAsync(vf, fname);
                     }
                 }
@@ -596,6 +661,17 @@ namespace YoutubeDL
             }
 
             //LogWarning("ffmpeg or avconf is not installed.");
+        }
+
+        public async Task DownloadFormat(Stream outputStream, IFormat format)
+        {
+            var filename = Path.GetTempFileName();
+            await DownloadFormat(filename, format);
+            using (var file = File.OpenRead(filename))
+            {
+                await file.DoubleBufferCopyToAsync(outputStream);
+            }
+            File.Delete(filename);
         }
 
         public async Task<InfoDict> ProcessPlaylistResult(Playlist ie_result, bool download = true)
@@ -758,6 +834,10 @@ namespace YoutubeDL
             return sformats;
         }
 
+        /// <summary>
+        /// Its basically a string.Format() at runtime for the properties of the supplied object
+        /// </summary>
+        /// <returns>Prepared filename</returns>
         private string PrepareFilename(object dict, string prevFilename = null)
         {
             string outtmpl =
@@ -827,16 +907,22 @@ namespace YoutubeDL
             return formattedstr;
         }
 
-        public List<IPostProcessor> PostProcessors { get; } = new List<IPostProcessor>() { };
+        public List<Func<IFormat, IPostProcessor>> PostProcessors { get; } = new List<Func<IFormat, IPostProcessor>>() { };
+
+        public void AddPostProcessor(Func<IFormat, IPostProcessor> func)
+        {
+            PostProcessors.Add(func);
+        }
+
         public async Task PostProcess(string filename, IFormat format, CancellationToken token = default)
         {
-            PostProcessors.Add(new FFMpegAudioExtractorPP("mp3"));
-            foreach (IPostProcessor pp in PostProcessors)
+            foreach (var pFunc in PostProcessors)
             {
+                var pp = pFunc(format);
                 Type generic = pp.GetType()
                     .GetInterfaces()
                     .Where(
-                        x => x.IsGenericType && 
+                        x => x.IsGenericType &&
                         x.GetGenericTypeDefinition() == typeof(IPostProcessor<>))
                     .First().GenericTypeArguments[0];
                 if (generic.IsAssignableFrom(format.GetType()))
@@ -850,10 +936,20 @@ namespace YoutubeDL
             }
         }
 
-        public async Task DownloadFormat(Video video, string format, bool processSubtitles = false)
+        public IList<IFormat> SelectFormats(Video video, string format)
         {
-            var formats_to_download = FormatParser.SelectFormats(video.Formats, format, Options.MergeOutputFormat);
-            LogInfo(string.Format("{0}: downloading video in {1} formats", video.Id, formats_to_download.Count), "info");
+            return video.Formats.SelectFormats(format, Options.MergeOutputFormat);
+        }
+
+        public IList<IFormat> SelectFormats(Video video, string format, string mergeOutputFormat)
+        {
+            return video.Formats.SelectFormats(format, mergeOutputFormat);
+        }
+
+        public async Task Download(Video video, string formatSpec, bool processSubtitles = false)
+        {
+            var formats_to_download = SelectFormats(video, formatSpec);
+            LogInfo($"{video.Id}: downloading video in {formats_to_download.Count} formats", "info");
             if (processSubtitles)
             {
                 List<SubtitleFormat> subs = ProcessSubtitles(video.Subtitles, video.AutomaticSubtitles);
@@ -865,9 +961,16 @@ namespace YoutubeDL
             }
         }
 
-        public void DownloadFormat(params IFormat[] format)
+        public async Task Download(Video video, string formatSpec, string filename)
         {
-            // todo
+            var formats_to_download = SelectFormats(video, formatSpec);
+            LogInfo($"{video.Id}: downloading video in {formats_to_download.Count} formats", "info");
+            var fn = PrepareFilename(video, filename);
+
+            foreach (var fmt in formats_to_download)
+            {
+                await DownloadFormat(fn, fmt);
+            }
         }
 
         public void ListThumbnails(IList<Thumbnail> thumbnails)
@@ -1050,6 +1153,7 @@ namespace YoutubeDL
             {
                 if (disposing)
                 {
+                    // TODO: dispose managed state (managed objects).
                     if (httpClient != null)
                     {
                         httpClient.Dispose();
@@ -1064,14 +1168,13 @@ namespace YoutubeDL
                     {
                         Options = null;
                     }
-                    // TODO: dispose managed state (managed objects).
+                    RemoveAllExtractors();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
-                ie_types = null;
-                MethodInfo i = this.GetType().GetMethod("DisposePython", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (i != null) i.Invoke(this, new object[] { disposing });
+                //MethodInfo i = this.GetType().GetMethod("DisposePython", BindingFlags.NonPublic | BindingFlags.Instance);
+                //if (i != null) i.Invoke(this, new object[] { disposing });
                 
 
                 disposedValue = true;

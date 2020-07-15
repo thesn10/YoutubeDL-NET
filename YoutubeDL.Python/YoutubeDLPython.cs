@@ -1,63 +1,62 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Diagnostics;
-using System.Reflection;
-using System.Reflection.Emit;
-using Python.Runtime;
-using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Net.Http;
-using YoutubeDL.Models;
-//using System.Text.Json;
-using System.Resources;
 using System.IO;
 using System.IO.Compression;
-using YoutubeDL;
-using YoutubeDL.Python;
 using System.Runtime.CompilerServices;
 using YoutubeDL.Downloaders;
+using YoutubeDL.Python.Extractors;
 
 [assembly: InternalsVisibleTo("YoutubeDL")]
 namespace YoutubeDL.Python
 {
     public static class YoutubeDLPython
     {
-        private static PyScope PyScope;
-        public static async Task CheckDownloadYTDLPython(this YouTubeDL ytdl, bool force = false)
+        public static async Task<bool> CheckDownloadYTDLPython(this YouTubeDL ytdl, bool force = false, HttpClient client = null)
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            if (Directory.Exists(baseDir + "/youtube_dl")) 
+            if (Directory.Exists(baseDir + "/youtube_dl"))
             {
-                if (!force) return;
+                if (!force) return false;
                 Directory.Delete(baseDir + "/youtube_dl", true);
             }
 
             ytdl.LogInfo("The python version of youtube_dl is required but not installed, downloading and installing youtube-dl...");
 
-            HttpClientHandler handler = new HttpClientHandler();
-            handler.AllowAutoRedirect = false;
-
-            using (HttpClient client = new HttpClient(handler))
+            HttpResponseMessage resp;
+            if (client == null)
             {
-                var resp = await client.GetAsync("https://youtube-dl.org/downloads/latest/");
-                string version = resp.Headers.Location.Segments.Last().Replace("/", "").Trim();
-
-                string repoUrl = $"https://github.com/ytdl-org/youtube-dl/archive/{version}.zip";
-                HttpFD httpfd = new HttpFD();
-                httpfd.OnProgress += (sender, e) => ytdl.ProgressBar(sender, e, "youtube_dl-" + version, "Downloading");
-                await httpfd.SingleThreadedDownload(repoUrl, baseDir + "/youtube_dl.zip");
-                ytdl.LogInfo($"Extracting youtube_dl-{version}");
-
-                ZipFile.ExtractToDirectory(baseDir + "/youtube_dl.zip", baseDir);
-                File.Delete(baseDir + "/youtube_dl.zip");
-                Directory.Move(baseDir + $"/youtube-dl-{version}/youtube_dl", baseDir + "/youtube_dl");
-                Directory.Delete(baseDir + $"/youtube-dl-{version}", true);
+                HttpClientHandler handler = new HttpClientHandler();
+                handler.AllowAutoRedirect = false;
+                client = new HttpClient(handler);
+                resp = await client.GetAsync("https://youtube-dl.org/downloads/latest/");
+                client.Dispose();
             }
+            else
+            {
+                resp = await client.GetAsync("https://youtube-dl.org/downloads/latest/");
+            }
+
+            string version = resp.Headers.Location.Segments.Last().Replace("/", "").Trim();
+
+            string repoUrl = $"https://github.com/ytdl-org/youtube-dl/archive/{version}.zip";
+            HttpFD httpfd = new HttpFD();
+            httpfd.OnProgress += (sender, e) => ytdl.ProgressBar(sender, e, "youtube_dl-" + version, "Downloading");
+            await httpfd.SingleThreadedDownload(repoUrl, baseDir + "/youtube_dl.zip");
+            ytdl.LogInfo($"Extracting youtube_dl-{version}");
+
+            ZipFile.ExtractToDirectory(baseDir + "/youtube_dl.zip", baseDir);
+            File.Delete(baseDir + "/youtube_dl.zip");
+            Directory.Move(baseDir + $"/youtube-dl-{version}/youtube_dl", baseDir + "/youtube_dl");
+            Directory.Delete(baseDir + $"/youtube-dl-{version}", true);
+
+            ytdl.LogInfo($"youtube_dl-{version} installed!");
+
+            return true;
         }
 
-        public static void InitPython(this YouTubeDL dl)
+        /*public static void InitPython(this YouTubeDL dl)
         {
             if (!PythonEngine.IsInitialized)
             {
@@ -81,11 +80,12 @@ namespace YoutubeDL.Python
                 InitPython(ytdl);
                 state = Py.GIL();
             } 
-            catch 
+            catch (Exception e)
             {
-                ytdl.LogError("Python is not installed!");
+                ytdl.LogError("Python is not installed! " + e.Message);
                 throw new InvalidOperationException("Python is not installed!");
             }
+            ytdl.LogInfo("Using python lib: " + Runtime.PythonDLL);
 
             if (PyScope == null)
                 PyScope = Py.CreateScope("extractorscope");
@@ -142,20 +142,31 @@ namespace YoutubeDL.Python
 
                         return ie_result;
                     }
-                    catch (GeoRestrictionException)
+                    catch (PythonException p)
                     {
-
+                        state.Dispose();
+                        if (p.PythonTypeName == "ExtractorError")
+                        {
+                            ytdl.LogError("Extractor error occurred");
+                            throw new ExtractorException(p.Message, p);
+                        }
+                        else if (p.PythonTypeName == "GeoRestrictionError")
+                        {
+                            ytdl.LogError("Geo restriction error occurred");
+                            throw new GeoRestrictionException(p.Message, p);
+                        }
+                        else if (p.PythonTypeName == "MaxDownloadsReachedError")
+                        {
+                            ytdl.LogError("Max downloads reached");
+                            throw new MaxDownloadsReachedException(p.Message, p);
+                        }
+                        else throw p;
                     }
-                    catch (ExtractorException)
+                    catch (Exception e)
                     {
-
+                        state.Dispose();
+                        throw e;
                     }
-                    catch (MaxDownloadsReachedException)
-                    {
-
-                    }
-                    state.Dispose();
-                    return null;
                 }
                 state.Dispose();
                 return null;
@@ -206,19 +217,29 @@ namespace YoutubeDL.Python
 
                         return ie_result;
                     }
-                    catch (GeoRestrictionException e)
+                    catch (PythonException p)
                     {
-                        ytdl.LogError("Geo restriction error occurred");
-                        throw e;
+                        state.Dispose();
+                        if (p.PythonTypeName == "ExtractorError")
+                        {
+                            ytdl.LogError("Extractor error occurred");
+                            throw new ExtractorException(p.Message, p);
+                        }
+                        else if (p.PythonTypeName == "GeoRestrictionError")
+                        {
+                            ytdl.LogError("Geo restriction error occurred");
+                            throw new GeoRestrictionException(p.Message, p);
+                        }
+                        else if (p.PythonTypeName == "MaxDownloadsReachedError")
+                        {
+                            ytdl.LogError("Max downloads reached");
+                            throw new MaxDownloadsReachedException(p.Message, p);
+                        }
+                        else throw p;
                     }
-                    catch (ExtractorException e)
+                    catch (Exception e)
                     {
-                        ytdl.LogError("Extractor error occurred");
-                        throw e;
-                    }
-                    catch (MaxDownloadsReachedException e)
-                    {
-                        ytdl.LogError("Max downloads reached");
+                        state.Dispose();
                         throw e;
                     }
                 }
@@ -284,8 +305,19 @@ namespace YoutubeDL.Python
                 state.Dispose();
                 return null;
             }
+        }*/
+
+        public static void AddPythonExtractors(this YouTubeDL ytdl)
+        {
+            LazyExtractors.LoadLazyExtractors();
+            foreach (var r in LazyExtractors.Extractors)
+            {
+                var pyIe = new PythonExtractor(ytdl, r.Key, r.Value.Item1, r.Value.Item2);
+                ytdl.ie_instances.Add(pyIe);
+            }
         }
 
+        /*
         public static void AddDefaultExtraInfo(this YouTubeDL ytdl, InfoDict infoDict, dynamic python_ie, string url)
         {
             string abspath = url;
@@ -300,6 +332,6 @@ namespace YoutubeDL.Python
                 { "webpage_url_basename", abspath }
             };
             infoDict.AddExtraInfo(dict, false);
-        }
+        }*/
     }
 }
