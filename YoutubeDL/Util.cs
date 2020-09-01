@@ -227,10 +227,10 @@ namespace YoutubeDL
             {
                 var version = RuntimeInformation.OSDescription.Split('.');
                 var major = version[0];
-                var build = int.Parse(version[2]);
 
                 if (major == "Microsoft Windows 10")
                 {
+                    var build = int.Parse(version[2]);
                     if (build >= 10586 && build < 14393)
                     {
                         // tecnically, ansi color is supported, but it is too buggy
