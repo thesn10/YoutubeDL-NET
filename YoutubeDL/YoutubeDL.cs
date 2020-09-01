@@ -36,7 +36,7 @@ namespace YoutubeDL
 
         public YoutubeDLOptions Options { get; set; }
         public int NumDownloads { get; private set; } = 0;
-
+        public IWebProxy Proxy { get; set; } = null;
         public Func<CompFormat, IPostProcessor<CompFormat>> Merger { get; set; } = (f) => new FFMpegMergerPP(true);
         public Func<IFormat, IPostProcessor> Converter { get; set; } = (f) => new FFMpegConverterPP("");
 
@@ -193,6 +193,8 @@ namespace YoutubeDL
             {
                 CookieContainer = new CookieContainer(),
                 AllowAutoRedirect = true,
+                UseProxy = Proxy != null,
+                Proxy = Proxy,
             };
             httpClient = new HttpClient(httpClientHandler, true);
         }
@@ -211,7 +213,7 @@ namespace YoutubeDL
         public void AddExtractor<T>() where T : class, IInfoExtractor
         {
             var type = typeof(T);
-            var constructor = type.GetConstructor(new Type[] { typeof(YouTubeDL) });
+            var constructor = type.GetConstructor(new Type[] { typeof(IManagingDL) });
             if (constructor == null) throw new InvalidOperationException(nameof(T) + " has no valid constructor");
             var ie = (IInfoExtractor)constructor.Invoke(new object[] { this });
             ie_instances.Add(ie);
@@ -288,7 +290,7 @@ namespace YoutubeDL
 
                 try
                 {
-                    InfoDict ie_result = extractor.Extract(url);
+                    InfoDict ie_result = await extractor.ExtractAsync(url);
 
                     AddDefaultExtraInfo(ie_result, extractor, url);
 
@@ -350,28 +352,20 @@ namespace YoutubeDL
 
         internal static void AddDefaultExtraInfo(InfoDict infoDict, IInfoExtractor ie, string url)
         {
+            object urlBasename = url;
             if (Uri.TryCreate(url, UriKind.Absolute, out Uri result))
             {
-                var dict = new Dictionary<string, object>()
+                urlBasename = result.AbsolutePath;
+            }
+
+            var dict = new Dictionary<string, object>()
                 {
                     { "extractor", ie.GetType().Name },
                     { "extractor_key", ie.Name },
                     { "webpage_url", url },
-                    { "webpage_url_basename", result.AbsolutePath }
+                    { "webpage_url_basename", urlBasename }
                 };
-                infoDict.AddExtraInfo(dict, false);
-            }
-            else
-            {
-                var dict = new Dictionary<string, object>()
-                {
-                    { "extractor", ie.GetType().Name },
-                    { "extractor_key", ie.Name },
-                    { "webpage_url", url },
-                    { "webpage_url_basename", url }
-                };
-                infoDict.AddExtraInfo(dict, false);
-            }
+            infoDict.AddExtraInfo(dict, false);
         }
 
         /// <summary>
@@ -514,7 +508,7 @@ namespace YoutubeDL
 
             if (Options.SkipDownload) return;
 
-            bool success = true;
+            //bool success = true;
 
             try
             {
@@ -735,6 +729,16 @@ namespace YoutubeDL
                     continue;
                 }
 
+                object urlBasename = ie_result.WebpageUrlBasename;
+                if (urlBasename == null)
+                {
+                    urlBasename = ie_result.WebpageUrl;
+                    if (Uri.TryCreate(ie_result.WebpageUrl, UriKind.Absolute, out Uri result))
+                    {
+                        urlBasename = result.AbsolutePath;
+                    }
+                }
+
                 var extra = new Dictionary<string, object>() {
                     //{ "n_entries", entries.Count },
                     { "playlist", ie_result },
@@ -745,7 +749,7 @@ namespace YoutubeDL
                     { "playlist_index", i + playliststart },
                     { "extractor", ie_result.Extractor },
                     { "webpage_url", ie_result.WebpageUrl },
-                    { "webpage_url_basename", new Uri(ie_result.WebpageUrl).AbsolutePath },
+                    { "webpage_url_basename", urlBasename },
                     { "extractor_key", ie_result.ExtractorKey }
                 };
 
@@ -1076,7 +1080,7 @@ namespace YoutubeDL
             }
         }
 
-        public async Task WriteThumbnails(ThumbnailCollection thumbs)
+        public void WriteThumbnails(ThumbnailCollection thumbs)
         {
             // todo
         }
