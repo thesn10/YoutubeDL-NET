@@ -113,9 +113,9 @@ namespace YoutubeDL.Python.Extractors
             }
         }
 
-        public override async Task<InfoDict> ExtractAsync(string url)
+        public override Task<InfoDict> ExtractAsync(string url)
         {
-            return Extract(url);
+            return Task.FromResult(Extract(url));
         }
 
         public override bool Suitable(string url)

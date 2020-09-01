@@ -61,10 +61,11 @@ namespace YoutubeDL.Downloaders
             startTime = DateTime.Now;
         }
 
-        public virtual async Task DownloadAsync(IDownloadable format, string filename, bool overwrite = true)
+        public virtual Task DownloadAsync(IDownloadable format, string filename, bool overwrite = true)
         {
-            if (File.Exists(filename) && overwrite == false) return;
+            if (File.Exists(filename) && overwrite == false) return Task.CompletedTask;
             startTime = DateTime.Now;
+            return Task.CompletedTask;
         }
     }
 }
